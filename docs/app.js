@@ -97,7 +97,7 @@ function showSignIn(message = '') {
   app.innerHTML = `
     <section class="signin">
       <h1>${esc(CFG.siteTitle)}</h1>
-      <p>Our family recipes. Sign in with the Google account the recipe folder is shared with.</p>
+      <p>Our shared recipes. Sign in with the Google account the recipe folder is shared with.</p>
       ${message ? `<p class="error">${esc(message)}</p>` : ''}
       <button class="primary" id="signin">Sign in with Google</button>
     </section>`;

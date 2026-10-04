@@ -1,6 +1,6 @@
 # Recipe Box
 
-A private family recipe website. People drop recipe files (PDFs, photos of cookbook pages or handwritten cards, Google Docs, Word files) into a shared Google Drive folder. Once an hour a Google Apps Script job sends new files to Claude, which turns each one into a uniform structured recipe. The website (GitHub Pages) reads those recipes using each person's own Google sign-in, so only people the folder is shared with can see anything.
+A private recipe website for a small group. People drop recipe files (PDFs, photos of cookbook pages or handwritten cards, Google Docs, Word files) into a shared Google Drive folder. Once an hour a Google Apps Script job sends new files to Claude, which turns each one into a uniform structured recipe. The website (GitHub Pages) reads those recipes using each person's own Google sign-in, so only people the folder is shared with can see anything.
 
 **This repository holds no recipes.** It only holds code and the IDs of the Drive files, and the IDs are useless without access to the folder.
 

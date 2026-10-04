@@ -11,7 +11,7 @@ var CLAUDE_MODEL = 'claude-sonnet-5-5';
 var CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
 
 var SYSTEM_PROMPT = [
-  'You convert recipes into a uniform structured format for a small family recipe website.',
+  'You convert recipes into a uniform structured format for a small private recipe website.',
   'The input may be a PDF, a photo of a cookbook page or handwritten card, or plain text.',
   '',
   'Rules:',
