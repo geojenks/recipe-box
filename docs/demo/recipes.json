@@ -1,0 +1,434 @@
+{
+  "version": 1,
+  "updated": "2026-09-20T10:00:00Z",
+  "sources": {},
+  "recipes": [
+    {
+      "addedBy": "Demo",
+      "addedAt": "2026-09-20T10:00:00Z",
+      "photoFileId": null,
+      "sourceFileId": null,
+      "timesAreEstimated": false,
+      "sourceCredit": null,
+      "id": "demo-1",
+      "sourceName": "Spaghetti puttanesca.pdf",
+      "title": "Spaghetti puttanesca",
+      "description": "A punchy store-cupboard pasta with tomatoes, olives, capers and anchovies.",
+      "servings": "4",
+      "prepMinutes": 10,
+      "cookMinutes": 20,
+      "totalMinutes": 30,
+      "course": "Main",
+      "cuisine": "Italian",
+      "tags": [
+        "quick",
+        "weeknight"
+      ],
+      "ingredientGroups": [
+        {
+          "name": null,
+          "items": [
+            {
+              "quantity": "400",
+              "unit": "g",
+              "name": "spaghetti",
+              "canonical": "spaghetti",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "3",
+              "unit": "tbsp",
+              "name": "olive oil",
+              "canonical": "olive oil",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            },
+            {
+              "quantity": "3",
+              "unit": null,
+              "name": "garlic cloves",
+              "canonical": "garlic",
+              "preparation": "thinly sliced",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "6",
+              "unit": null,
+              "name": "anchovy fillets",
+              "canonical": "anchovy",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": "pinch",
+              "name": "chilli flakes",
+              "canonical": "chilli flakes",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "400",
+              "unit": "g",
+              "name": "tin chopped tomatoes",
+              "canonical": "chopped tomato",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "100",
+              "unit": "g",
+              "name": "black olives",
+              "canonical": "black olive",
+              "preparation": "pitted",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "2",
+              "unit": "tbsp",
+              "name": "capers",
+              "canonical": "caper",
+              "preparation": "rinsed",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": "handful",
+              "name": "parsley",
+              "canonical": "parsley",
+              "preparation": "chopped",
+              "optional": true,
+              "staple": false
+            },
+            {
+              "quantity": null,
+              "unit": null,
+              "name": "salt",
+              "canonical": "salt",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "s1",
+          "label": "Boil salted water",
+          "text": "Bring a large pan of well-salted water to the boil.",
+          "minutes": 10,
+          "dependsOn": []
+        },
+        {
+          "id": "s2",
+          "label": "Fry garlic & anchovy",
+          "text": "Meanwhile, warm the oil in a frying pan and fry the garlic, anchovies and chilli until the anchovies melt.",
+          "minutes": 3,
+          "dependsOn": []
+        },
+        {
+          "id": "s3",
+          "label": "Simmer sauce",
+          "text": "Add the tomatoes, olives and capers and simmer for 10 minutes until thickened.",
+          "minutes": 10,
+          "dependsOn": [
+            "s2"
+          ]
+        },
+        {
+          "id": "s4",
+          "label": "Cook spaghetti",
+          "text": "Cook the spaghetti until al dente, reserving a mug of pasta water.",
+          "minutes": 10,
+          "dependsOn": [
+            "s1"
+          ]
+        },
+        {
+          "id": "s5",
+          "label": "Toss together",
+          "text": "Toss the pasta through the sauce, loosening with pasta water. Scatter with parsley and serve.",
+          "minutes": 2,
+          "dependsOn": [
+            "s3",
+            "s4"
+          ]
+        }
+      ],
+      "sourceNotes": [
+        "Use good oil-packed anchovies; they dissolve completely."
+      ]
+    },
+    {
+      "addedBy": "Demo",
+      "addedAt": "2026-09-20T10:00:00Z",
+      "photoFileId": null,
+      "sourceFileId": null,
+      "timesAreEstimated": false,
+      "sourceCredit": null,
+      "id": "demo-2",
+      "sourceName": "Tomato and olive salad.jpg",
+      "title": "Tomato, olive and basil salad",
+      "description": "A simple summer salad.",
+      "servings": "2",
+      "prepMinutes": 10,
+      "cookMinutes": null,
+      "totalMinutes": 10,
+      "course": "Side",
+      "cuisine": "Italian",
+      "tags": [
+        "vegetarian",
+        "no-cook"
+      ],
+      "ingredientGroups": [
+        {
+          "name": null,
+          "items": [
+            {
+              "quantity": "4",
+              "unit": null,
+              "name": "ripe tomatoes",
+              "canonical": "tomato",
+              "preparation": "sliced",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "50",
+              "unit": "g",
+              "name": "black olives",
+              "canonical": "black olive",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": "small bunch",
+              "name": "basil",
+              "canonical": "basil",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": null,
+              "name": "garlic clove",
+              "canonical": "garlic",
+              "preparation": "crushed",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "3",
+              "unit": "tbsp",
+              "name": "extra virgin olive oil",
+              "canonical": "olive oil",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            },
+            {
+              "quantity": null,
+              "unit": null,
+              "name": "salt and pepper",
+              "canonical": "salt",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "s1",
+          "label": "Slice tomatoes",
+          "text": "Arrange the tomatoes on a plate and season.",
+          "minutes": 5,
+          "dependsOn": []
+        },
+        {
+          "id": "s2",
+          "label": "Make dressing",
+          "text": "Whisk the garlic into the oil.",
+          "minutes": 2,
+          "dependsOn": []
+        },
+        {
+          "id": "s3",
+          "label": "Assemble",
+          "text": "Scatter over olives and torn basil, then drizzle with the dressing.",
+          "minutes": 2,
+          "dependsOn": [
+            "s1",
+            "s2"
+          ]
+        }
+      ],
+      "sourceNotes": []
+    },
+    {
+      "addedBy": "Demo",
+      "addedAt": "2026-09-20T10:00:00Z",
+      "photoFileId": null,
+      "sourceFileId": null,
+      "timesAreEstimated": true,
+      "sourceCredit": "Family recipe",
+      "id": "demo-3",
+      "sourceName": "Lemon drizzle.pdf",
+      "title": "Lemon drizzle cake",
+      "description": "A light sponge soaked in a crunchy lemon syrup.",
+      "servings": "10 slices",
+      "prepMinutes": 15,
+      "cookMinutes": 45,
+      "totalMinutes": 60,
+      "course": "Baking",
+      "cuisine": "British",
+      "tags": [
+        "cake"
+      ],
+      "ingredientGroups": [
+        {
+          "name": "For the cake",
+          "items": [
+            {
+              "quantity": "225",
+              "unit": "g",
+              "name": "unsalted butter",
+              "canonical": "butter",
+              "preparation": "softened",
+              "optional": false,
+              "staple": true
+            },
+            {
+              "quantity": "225",
+              "unit": "g",
+              "name": "caster sugar",
+              "canonical": "caster sugar",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            },
+            {
+              "quantity": "4",
+              "unit": null,
+              "name": "eggs",
+              "canonical": "egg",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "225",
+              "unit": "g",
+              "name": "self-raising flour",
+              "canonical": "self-raising flour",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": null,
+              "name": "lemon",
+              "canonical": "lemon",
+              "preparation": "zested",
+              "optional": false,
+              "staple": false
+            }
+          ]
+        },
+        {
+          "name": "For the drizzle",
+          "items": [
+            {
+              "quantity": "1½",
+              "unit": null,
+              "name": "lemons",
+              "canonical": "lemon",
+              "preparation": "juiced",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "85",
+              "unit": "g",
+              "name": "caster sugar",
+              "canonical": "caster sugar",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "s1",
+          "label": "Preheat oven",
+          "text": "Heat oven to 180C/160C fan and line a loaf tin.",
+          "minutes": null,
+          "dependsOn": []
+        },
+        {
+          "id": "s2",
+          "label": "Cream butter & sugar",
+          "text": "Beat the butter and sugar until pale and fluffy.",
+          "minutes": 5,
+          "dependsOn": []
+        },
+        {
+          "id": "s3",
+          "label": "Add eggs & flour",
+          "text": "Beat in the eggs one at a time, then fold in the flour and zest.",
+          "minutes": 5,
+          "dependsOn": [
+            "s2"
+          ]
+        },
+        {
+          "id": "s4",
+          "label": "Bake",
+          "text": "Pour into the tin and bake for 45-50 minutes until a skewer comes out clean.",
+          "minutes": 45,
+          "dependsOn": [
+            "s1",
+            "s3"
+          ]
+        },
+        {
+          "id": "s5",
+          "label": "Mix drizzle",
+          "text": "Mix the lemon juice and sugar.",
+          "minutes": 2,
+          "dependsOn": []
+        },
+        {
+          "id": "s6",
+          "label": "Drizzle warm cake",
+          "text": "Prick the warm cake all over and pour over the drizzle. Cool in the tin.",
+          "minutes": 2,
+          "dependsOn": [
+            "s4",
+            "s5"
+          ]
+        }
+      ],
+      "sourceNotes": [
+        "Keeps for 3-4 days in an airtight tin."
+      ]
+    }
+  ]
+}
