@@ -9,7 +9,6 @@
       "photoFileId": null,
       "sourceFileId": null,
       "timesAreEstimated": false,
-      "sourceCredit": null,
       "id": "demo-1",
       "sourceName": "Spaghetti puttanesca.pdf",
       "title": "Spaghetti puttanesca",
@@ -167,7 +166,13 @@
       ],
       "sourceNotes": [
         "Use good oil-packed anchovies; they dissolve completely."
-      ]
+      ],
+      "author": "Demo Chef",
+      "book": "The Demo Cookbook",
+      "sourceUrl": null,
+      "dishPhoto": null,
+      "photoKind": null,
+      "photoCrop": null
     },
     {
       "addedBy": "Demo",
@@ -175,7 +180,6 @@
       "photoFileId": null,
       "sourceFileId": null,
       "timesAreEstimated": false,
-      "sourceCredit": null,
       "id": "demo-2",
       "sourceName": "Tomato and olive salad.jpg",
       "title": "Tomato, olive and basil salad",
@@ -277,7 +281,13 @@
           ]
         }
       ],
-      "sourceNotes": []
+      "sourceNotes": [],
+      "author": null,
+      "book": null,
+      "sourceUrl": null,
+      "dishPhoto": null,
+      "photoKind": null,
+      "photoCrop": null
     },
     {
       "addedBy": "Demo",
@@ -285,7 +295,6 @@
       "photoFileId": null,
       "sourceFileId": null,
       "timesAreEstimated": true,
-      "sourceCredit": "Family recipe",
       "id": "demo-3",
       "sourceName": "Lemon drizzle.pdf",
       "title": "Lemon drizzle cake",
@@ -428,7 +437,13 @@
       ],
       "sourceNotes": [
         "Keeps for 3-4 days in an airtight tin."
-      ]
+      ],
+      "author": null,
+      "book": "Demo Baking",
+      "sourceUrl": null,
+      "dishPhoto": null,
+      "photoKind": null,
+      "photoCrop": null
     }
   ]
 }

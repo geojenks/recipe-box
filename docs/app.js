@@ -182,6 +182,33 @@ function photoUrl(fileId) {
   return state.photos.get(fileId);
 }
 
+/** The recipe's picture; when the dish photo sits inside a page picture, cut it out. */
+function recipePhotoUrl(r) {
+  if (!r.photoCrop) return photoUrl(r.photoFileId);
+  const key = `${r.photoFileId}#${JSON.stringify(r.photoCrop)}`;
+  if (!state.photos.has(key)) {
+    state.photos.set(key, photoUrl(r.photoFileId).then((url) => url && cropImage(url, r.photoCrop)).catch(() => null));
+  }
+  return state.photos.get(key);
+}
+
+function cropImage(url, crop) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const sx = crop.left * img.naturalWidth, sy = crop.top * img.naturalHeight;
+      const sw = crop.width * img.naturalWidth, sh = crop.height * img.naturalHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(sw);
+      canvas.height = Math.round(sh);
+      canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((b) => (b ? resolve(URL.createObjectURL(b)) : reject(new Error('crop failed'))), 'image/jpeg', 0.9);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 async function loadNotes() {
   if (DEMO) {
     try { state.notes = JSON.parse(localStorage.getItem('rb-demo-notes') || '[]'); } catch { state.notes = []; }
@@ -242,7 +269,7 @@ function matchingRecipes() {
     const canon = new Set(allItems(r).map((i) => (i.canonical || i.name).toLowerCase().trim()));
     if (!ingredients.every((i) => canon.has(i))) return false;
     if (!words.length) return true;
-    const hay = [r.title, r.description, r.cuisine, r.course, ...r.tags, ...allItems(r).map((i) => i.name)]
+    const hay = [r.title, r.description, r.cuisine, r.course, r.author, r.book, r.sourceCredit, ...r.tags, ...allItems(r).map((i) => i.name)]
       .join(' ').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
@@ -270,25 +297,47 @@ function recipeCard(r) {
   const t = fmtMinutes(totalMinutes(r));
   return `
     <a class="card" href="#/r/${encodeURIComponent(r.id)}">
-      <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.photoFileId || '')}"><span>${esc(r.title.slice(0, 1))}</span></div>
+      <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}"><span>${esc(r.title.slice(0, 1))}</span></div>
       <div class="card-body">
         <h3>${esc(r.title)}</h3>
+        ${r.author || r.book ? `<p class="meta by">${esc([r.author, r.book].filter(Boolean).join(' · '))}</p>` : ''}
         <p class="meta">${[r.course, t, r.servings && `Serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
       </div>
     </a>`;
 }
+
+/** "By <author> · <book> · Website" with author and book linking to a search for them. */
+function byline(r) {
+  const parts = [];
+  if (r.author) parts.push(`By <a href="#/" data-search="${esc(r.author)}">${esc(r.author)}</a>`);
+  if (r.book) parts.push(`<a href="#/" data-search="${esc(r.book)}"><cite>${esc(r.book)}</cite></a>`);
+  if (r.sourceUrl && /^https?:\/\//i.test(r.sourceUrl)) {
+    parts.push(`<a href="${esc(r.sourceUrl)}" target="_blank" rel="noopener">Website</a>`);
+  }
+  return parts.length ? `<p class="byline">${parts.join(' · ')}</p>` : '';
+}
+
+// Clicking an author or book shows every recipe from them.
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('[data-search]');
+  if (!link) return;
+  e.preventDefault();
+  state.search = { text: link.dataset.search, ingredients: [], course: '' };
+  if (location.hash === '#/' || location.hash === '') route();
+  else location.hash = '#/';
+});
 
 function hydratePhotos(root) {
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
-      photoUrl(e.target.dataset.photo).then((url) => {
+      recipePhotoUrl(state.byId.get(e.target.dataset.photo)).then((url) => {
         if (url) e.target.innerHTML = `<img src="${esc(url)}" alt="" loading="lazy">`;
       });
     }
   }, { rootMargin: '200px' });
-  root.querySelectorAll('[data-photo]').forEach((el) => el.dataset.photo && io.observe(el));
+  root.querySelectorAll('[data-photo]').forEach((el) => state.byId.get(el.dataset.photo)?.photoFileId && io.observe(el));
 }
 
 function renderHome() {
@@ -359,8 +408,9 @@ function renderRecipe(id) {
   app.innerHTML = `
     <article class="recipe">
       <a href="#/" class="back">← All recipes</a>
-      ${r.photoKind === 'dish' ? `<div class="hero" data-photo="${esc(r.photoFileId)}"></div>` : ''}
+      ${r.photoKind === 'dish' ? `<div class="hero" data-photo="${esc(r.id)}"></div>` : ''}
       <h1>${esc(r.title)}</h1>
+      ${byline(r)}
       <p class="lede">${esc(r.description)}</p>
       <dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>
       <p class="tags">${[r.course, r.cuisine, ...r.tags].filter(Boolean).map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</p>
@@ -403,7 +453,7 @@ function renderRecipe(id) {
       </section>
 
       <p class="source muted">
-        ${r.sourceCredit ? `Source: ${esc(r.sourceCredit)}<br>` : ''}
+        ${!r.author && !r.book && r.sourceCredit ? `Source: ${esc(r.sourceCredit)}<br>` : ''}
         Added${r.addedBy ? ` by ${esc(r.addedBy)}` : ''} on ${new Date(r.addedAt).toLocaleDateString()}
         ${r.sourceFileId && !DEMO ? ` · <a href="https://drive.google.com/file/d/${encodeURIComponent(r.sourceFileId)}/view" target="_blank" rel="noopener">Original file</a>` : ''}
       </p>

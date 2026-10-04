@@ -17,7 +17,7 @@ var SYSTEM_PROMPT = [
   'Rules:',
   '- Transcribe faithfully. Do not invent ingredients, quantities or steps that are not in the source.',
   '  If a value is genuinely absent (e.g. no cook time given), use null rather than guessing,',
-  '  except estimatedTimes, where you should give your best estimate and set timesAreEstimated to true.',
+  '  except prep/cook/total times, where you should give your best estimate and set timesAreEstimated to true.',
   '- Quantities: keep the source units. Put the number in "quantity" as written (e.g. "1 1/2", "200", "a pinch").',
   '- "canonical" is the plain ingredient for searching: lowercase, singular, no brand, no preparation',
   '  (e.g. "2 large red onions, finely sliced" -> canonical "red onion"; "Maldon sea salt" -> "salt").',
@@ -29,6 +29,14 @@ var SYSTEM_PROMPT = [
   '  boils) should NOT depend on each other, so the method can be drawn as a flowchart.',
   '  Step ids are "s1", "s2", ... in source order. "label" is a 2-5 word summary for the flowchart box.',
   '- "sourceNotes" holds tips, variations, storage or serving notes from the source itself.',
+  '- "author" is the chef or writer credited for the recipe, and "book" the cookbook, magazine or website',
+  '  it comes from, as printed. Use page headers/footers and printed URLs as clues. null if not shown.',
+  '  "sourceUrl" is a web address printed on the page (e.g. in a browser print header), else null.',
+  '- "dishPhoto": if the file contains a photograph of the finished dish, give the page it is on (1 = first',
+  '  page or the image itself) and its bounding box as fractions of that page\'s width and height',
+  '  (left, top, width, height, each 0-1), drawn tightly around the photo only, excluding captions and borders.',
+  '  Pick the main photo of the finished dish; ignore logos, adverts, step-by-step photos and photos of other',
+  '  recipes. null if there is no such photo.',
   '- If the file contains several recipes, return each one in the recipes array.',
   '  If it contains no recipe at all, return an empty recipes array.'
 ].join('\n');
@@ -54,7 +62,7 @@ var RECIPE_SCHEMA = {
         required: [
           'title', 'description', 'servings', 'prepMinutes', 'cookMinutes', 'totalMinutes',
           'timesAreEstimated', 'course', 'cuisine', 'tags', 'ingredientGroups', 'steps',
-          'sourceNotes', 'sourceCredit'
+          'sourceNotes', 'author', 'book', 'sourceUrl', 'dishPhoto'
         ],
         properties: {
           title: { type: 'string' },
@@ -111,7 +119,23 @@ var RECIPE_SCHEMA = {
             }
           },
           sourceNotes: { type: 'array', items: { type: 'string' } },
-          sourceCredit: nullable_('string', 'Author, book or website if stated')
+          author: NULLABLE_STR,
+          book: NULLABLE_STR,
+          sourceUrl: NULLABLE_STR,
+          dishPhoto: {
+            anyOf: [{ type: 'null' }, {
+              type: 'object',
+              additionalProperties: false,
+              required: ['page', 'left', 'top', 'width', 'height'],
+              properties: {
+                page: { type: 'integer' },
+                left: { type: 'number' },
+                top: { type: 'number' },
+                width: { type: 'number' },
+                height: { type: 'number' }
+              }
+            }]
+          }
         }
       }
     }
