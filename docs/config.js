@@ -2,7 +2,7 @@
 // Drive folder is shared with and who is a test user on the Google Cloud app.
 window.RECIPE_BOX_CONFIG = {
   // Google Cloud > APIs & Services > Credentials > OAuth client ID (Web application)
-  clientId: 'PASTE-CLIENT-ID.apps.googleusercontent.com',
+  clientId: '265100605111-vpc1mbo7mub2n90gh5vvenv63ta88gru.apps.googleusercontent.com',
 
   // Logged by setup() in the Apps Script editor
   recipesFileId: 'PASTE-RECIPES-FILE-ID',
