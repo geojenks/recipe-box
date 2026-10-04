@@ -5,11 +5,9 @@ window.RECIPE_BOX_CONFIG = {
   clientId: '265100605111-vpc1mbo7mub2n90gh5vvenv63ta88gru.apps.googleusercontent.com',
 
   // Logged by setup() in the Apps Script editor
-  recipesFileId: 'PASTE-RECIPES-FILE-ID',
-  sheetId: 'PASTE-SHEET-ID',
-  inboxFolderId: 'PASTE-INBOX-FOLDER-ID',
-
-  siteTitle: 'Recipe Box',
+  recipesFileId: '1u24tIFe4KCuOS2bSrVDM_GzAxIoXInHI',
+  sheetId: '19l3vRnuUOrk26eTK5o6oK1zT_Qv8EqaSx7kBWwNa-bQ',
+  inboxFolderId: '1FEMxVWTEWwPbIES0WJt8hWfstPYPD-0w',
 
   // Always treated as staples (left out of "goes well with" suggestions),
   // on top of whatever Claude flags as a staple in each recipe.
