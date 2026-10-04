@@ -1,7 +1,7 @@
 // Recipe Box front end. Talks directly to Google Drive and Sheets with the
 // signed-in user's own token, so it only works for people the folder is shared with.
 
-const CFG = window.RECIPE_BOX_CONFIG;
+const CFG = { siteTitle: 'Recipe Box', ...window.RECIPE_BOX_CONFIG };
 const DEMO = new URLSearchParams(location.search).has('demo');
 const SCOPES = [
   'openid', 'email', 'profile',
