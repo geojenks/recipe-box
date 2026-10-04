@@ -52,7 +52,11 @@ tools/         test the Claude extraction locally
 2. **APIs & Services > Library**: enable the **Google Drive API** and the **Google Sheets API**.
 3. **APIs & Services > OAuth consent screen** (shown as "Google Auth Platform"):
    - User type **External**, app name "Recipe Box", your email for the contact fields.
-   - **Data access / Scopes**: add `.../auth/drive.readonly` and `.../auth/spreadsheets`.
+   - **Data access / Scopes**: click **Add or remove scopes**, and in **Manually add scopes** paste these two full addresses, then **Add to table** and **Update**:
+     ```
+     https://www.googleapis.com/auth/drive.readonly
+     https://www.googleapis.com/auth/spreadsheets
+     ```
    - **Audience / Test users**: add all 5 Google accounts. Leave the app in **Testing** mode. Only these accounts can sign in.
 4. **APIs & Services > Credentials > Create credentials > OAuth client ID**:
    - Type **Web application**.
