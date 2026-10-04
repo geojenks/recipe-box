@@ -5,9 +5,9 @@
  * file in Node and send the exact same request against local sample files.
  */
 
-// Haiku 4.5: about a quarter of the cost of Opus for this job. Switch to
-// 'claude-opus-5-5' if extraction quality on messy scans isn't good enough.
-var CLAUDE_MODEL = 'claude-haiku-4-5';
+// Sonnet 5.5: about half the cost of Opus for this job. 'claude-haiku-4-5' is
+// cheaper still (remove effort/fallbacks below if you switch to it).
+var CLAUDE_MODEL = 'claude-sonnet-5-5';
 var CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
 
 var SYSTEM_PROMPT = [
@@ -137,14 +137,19 @@ function buildExtractionRequest_(input, fileName) {
   return {
     model: CLAUDE_MODEL,
     max_tokens: 16000,
-    output_config: { format: { type: 'json_schema', schema: RECIPE_SCHEMA } },
+    // Extraction is straightforward; low effort keeps each call quick (Apps Script
+    // requests time out) and cheap.
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: RECIPE_SCHEMA } },
+    // If a safety check wrongly declines a recipe, Anthropic retries it on another model.
+    fallbacks: 'default',
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: content }]
   };
 }
 
 var CLAUDE_HEADERS = {
-  'anthropic-version': '2023-06-01'
+  'anthropic-version': '2023-06-01',
+  'anthropic-beta': 'server-side-fallback-2026-07-01'
 };
 
 /** Parses a Messages API response body into {recipes: [...]}, or throws. */

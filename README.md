@@ -28,7 +28,7 @@ tools/         test the Claude extraction locally
 
 ### 1. Claude API key
 1. Go to https://console.anthropic.com, add billing, and create an API key.
-2. Cost: about 1–2p per recipe file, charged once when the file is processed. Viewing the site costs nothing.
+2. Cost: about 2–4p per recipe file, charged once when the file is processed. Viewing the site costs nothing.
 
 ### 2. The shared Drive folder
 1. In Google Drive, create a folder called **Recipe Box**.
@@ -93,6 +93,6 @@ Don't commit real recipes in `docs/demo/recipes.json`, because GitHub Pages woul
 
 ## How it works
 
-- **Extraction** (`apps-script/Extract.gs`): Claude Haiku 4.5 with structured outputs, so every recipe comes back in exactly the same JSON shape. Haiku was chosen for cost; if messy scans or handwriting come out badly, change `CLAUDE_MODEL` to `claude-opus-5-5` (about 4x the cost). For each ingredient Claude also returns a plain search name (`"2 red onions, sliced"` becomes `red onion`) and a staple flag. For each step it returns which earlier steps it depends on, and the flowchart is drawn from those links.
+- **Extraction** (`apps-script/Extract.gs`): Claude Sonnet 5.5 with structured outputs, so every recipe comes back in exactly the same JSON shape. The request also turns on Anthropic's server-side fallback, so if a safety check wrongly declines a recipe, another model retries it automatically. To change model, edit `CLAUDE_MODEL`. For each ingredient Claude also returns a plain search name (`"2 red onions, sliced"` becomes `red onion`) and a staple flag. For each step it returns which earlier steps it depends on, and the flowchart is drawn from those links.
 - **Job** (`apps-script/Code.gs`): runs hourly under a lock. It works within a 4.5-minute budget and saves after every file, so a big batch is spread over several runs. It notices new, changed and deleted files.
 - **Website** (`docs/`): plain HTML/JS, no build step. It signs in with Google Identity Services and then reads `recipes.json` and photos from the Drive API, and reads and writes notes through the Sheets API, all with the visitor's own token. Mermaid draws the flowcharts.
