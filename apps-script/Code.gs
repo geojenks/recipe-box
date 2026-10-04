@@ -38,12 +38,32 @@ function requireProp_(name) {
  * IDs to paste into docs/config.js.
  */
 function setup() {
-  var inbox = DriveApp.getFolderById(requireProp_('INBOX_FOLDER_ID'));
+  var me = Session.getEffectiveUser().getEmail();
+  Logger.log('Running as ' + me);
+  var inboxId = requireProp_('INBOX_FOLDER_ID').trim();
+  if (!/^[\w-]{20,}$/.test(inboxId)) {
+    throw new Error('INBOX_FOLDER_ID "' + inboxId + '" does not look like a folder ID. Use only the part of ' +
+      'the folder URL after /folders/, without any "?usp=..." on the end.');
+  }
+  var inbox;
+  try {
+    inbox = DriveApp.getFolderById(inboxId);
+    Logger.log('Found folder "' + inbox.getName() + '"');
+  } catch (e) {
+    throw new Error(me + ' cannot open folder ' + inboxId + '. Check the ID, and that this account can see the folder. (' + e.message + ')');
+  }
   var p = props_();
 
-  var dataFolder = p.getProperty('DATA_FOLDER_ID')
-    ? DriveApp.getFolderById(p.getProperty('DATA_FOLDER_ID'))
-    : inbox.createFolder(DATA_FOLDER_NAME);
+  var dataFolder;
+  try {
+    dataFolder = p.getProperty('DATA_FOLDER_ID')
+      ? DriveApp.getFolderById(p.getProperty('DATA_FOLDER_ID'))
+      : inbox.createFolder(DATA_FOLDER_NAME);
+  } catch (e) {
+    throw new Error(me + ' can see "' + inbox.getName() + '" but cannot add to it. Run this script from the ' +
+      'account that owns the folder, or share the folder with ' + me + ' as Editor. If DATA_FOLDER_ID is set ' +
+      'in Script properties from an earlier attempt, delete it. (' + e.message + ')');
+  }
   p.setProperty('DATA_FOLDER_ID', dataFolder.getId());
 
   if (!p.getProperty('RECIPES_FILE_ID')) {
