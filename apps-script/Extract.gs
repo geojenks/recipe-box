@@ -5,7 +5,9 @@
  * file in Node and send the exact same request against local sample files.
  */
 
-var CLAUDE_MODEL = 'claude-opus-5-5';
+// Haiku 4.5: about a quarter of the cost of Opus for this job. Switch to
+// 'claude-opus-5-5' if extraction quality on messy scans isn't good enough.
+var CLAUDE_MODEL = 'claude-haiku-4-5';
 var CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
 
 var SYSTEM_PROMPT = [
@@ -31,8 +33,13 @@ var SYSTEM_PROMPT = [
   '  If it contains no recipe at all, return an empty recipes array.'
 ].join('\n');
 
-var NULLABLE_INT = { type: ['integer', 'null'] };
-var NULLABLE_STR = { type: ['string', 'null'] };
+function nullable_(type, description) {
+  var s = { anyOf: [{ type: type }, { type: 'null' }] };
+  if (description) s.description = description;
+  return s;
+}
+var NULLABLE_INT = nullable_('integer');
+var NULLABLE_STR = nullable_('string');
 
 var RECIPE_SCHEMA = {
   type: 'object',
@@ -67,7 +74,7 @@ var RECIPE_SCHEMA = {
               additionalProperties: false,
               required: ['name', 'items'],
               properties: {
-                name: { type: ['string', 'null'], description: 'e.g. "For the sauce"; null for a single ungrouped list' },
+                name: nullable_('string', 'e.g. "For the sauce"; null for a single ungrouped list'),
                 items: {
                   type: 'array',
                   items: {
@@ -104,7 +111,7 @@ var RECIPE_SCHEMA = {
             }
           },
           sourceNotes: { type: 'array', items: { type: 'string' } },
-          sourceCredit: { type: ['string', 'null'], description: 'Author, book or website if stated' }
+          sourceCredit: nullable_('string', 'Author, book or website if stated')
         }
       }
     }
@@ -130,19 +137,14 @@ function buildExtractionRequest_(input, fileName) {
   return {
     model: CLAUDE_MODEL,
     max_tokens: 16000,
-    // Extraction is straightforward; low effort keeps each call short enough
-    // for Apps Script's request timeout.
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: RECIPE_SCHEMA } },
-    // Retry on another model if a safety classifier declines (e.g. a false positive).
-    fallbacks: 'default',
+    output_config: { format: { type: 'json_schema', schema: RECIPE_SCHEMA } },
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: content }]
   };
 }
 
 var CLAUDE_HEADERS = {
-  'anthropic-version': '2023-06-01',
-  'anthropic-beta': 'server-side-fallback-2026-07-01'
+  'anthropic-version': '2023-06-01'
 };
 
 /** Parses a Messages API response body into {recipes: [...]}, or throws. */
