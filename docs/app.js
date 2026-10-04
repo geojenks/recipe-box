@@ -333,7 +333,10 @@ function hydratePhotos(root) {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
       recipePhotoUrl(state.byId.get(e.target.dataset.photo)).then((url) => {
-        if (url) e.target.innerHTML = `<img src="${esc(url)}" alt="" loading="lazy">`;
+        if (!url) return;
+        // Whole photo, scaled to fit; on cards a blurred copy fills the spare space.
+        const fill = e.target.classList.contains('thumb') && !e.target.classList.contains('page');
+        e.target.innerHTML = `${fill ? `<img class="backdrop" src="${esc(url)}" alt="">` : ''}<img class="photo" src="${esc(url)}" alt="" loading="lazy">`;
       });
     }
   }, { rootMargin: '200px' });
