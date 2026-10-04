@@ -270,7 +270,7 @@ function recipeCard(r) {
   const t = fmtMinutes(totalMinutes(r));
   return `
     <a class="card" href="#/r/${encodeURIComponent(r.id)}">
-      <div class="thumb" data-photo="${esc(r.photoFileId || '')}"><span>${esc(r.title.slice(0, 1))}</span></div>
+      <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.photoFileId || '')}"><span>${esc(r.title.slice(0, 1))}</span></div>
       <div class="card-body">
         <h3>${esc(r.title)}</h3>
         <p class="meta">${[r.course, t, r.servings && `Serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
@@ -359,7 +359,7 @@ function renderRecipe(id) {
   app.innerHTML = `
     <article class="recipe">
       <a href="#/" class="back">← All recipes</a>
-      <div class="hero" data-photo="${esc(r.photoFileId || '')}"></div>
+      ${r.photoKind === 'dish' ? `<div class="hero" data-photo="${esc(r.photoFileId)}"></div>` : ''}
       <h1>${esc(r.title)}</h1>
       <p class="lede">${esc(r.description)}</p>
       <dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>
@@ -574,7 +574,7 @@ async function renderInbox() {
     const rows = await loadStatus();
     document.getElementById('status').innerHTML = rows.length ? `
       <table class="status"><thead><tr><th>File</th><th>Status</th><th>Recipes</th></tr></thead><tbody>
-      ${rows.map(([file, status, n, detail]) => `<tr class="${status === 'ok' ? '' : 'bad'}"><td>${esc(file)}${detail ? `<br><small>${esc(detail)}</small>` : ''}</td><td>${esc(status)}</td><td>${esc(n)}</td></tr>`).join('')}
+      ${rows.map(([file, status, n, detail]) => `<tr class="${status === 'error' || status.startsWith('unsupported') ? 'bad' : ''}"><td>${esc(file)}${detail ? `<br><small>${esc(detail)}</small>` : ''}</td><td>${esc(status)}</td><td>${esc(n)}</td></tr>`).join('')}
       </tbody></table>` : '<p class="muted">Nothing processed yet.</p>';
   } catch (e) {
     document.getElementById('status').innerHTML = `<p class="error">Could not load status: ${esc(e.message)}</p>`;

@@ -18,6 +18,10 @@ var SHEET_NAME = 'Recipe Box notes';
 var TIME_BUDGET_MS = 4.5 * 60 * 1000; // Apps Script kills runs at 6 minutes
 var MAX_ATTEMPTS = 3;
 var PHOTO_SIZE = 1200;
+// Bump when photo selection changes so existing recipes get new photos
+// (photos only; recipes are not sent to Claude again).
+var PHOTO_VERSION = 2;
+var CONTINUE_HANDLER = 'continueProcessing';
 
 var IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
 var CLAUDE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -134,6 +138,9 @@ function processInboxLocked_() {
   var seen = {};
   var changed = false;
 
+  var pending = [];
+  var outOfTime = function () { return Date.now() - started > TIME_BUDGET_MS; };
+
   plan.sources.forEach(function (item) {
     var file = item.file;
     var id = file.getId();
@@ -143,30 +150,49 @@ function processInboxLocked_() {
     var photoKey = photo ? photo.getId() + '@' + photo.getLastUpdated().toISOString() : null;
     var entry = index.sources[id];
 
-    var needsWork = !entry || entry.modified !== modified || entry.photoKey !== photoKey ||
+    var needsWork = !entry || entry.modified !== modified ||
       (entry.status === 'error' && entry.attempts < MAX_ATTEMPTS);
-    if (!needsWork) {
-      entry.name = file.getName();
+    var needsPhoto = !needsWork && entry.status !== 'error' &&
+      (entry.photoKey !== photoKey || entry.photoVersion !== PHOTO_VERSION);
+    if (entry) entry.name = file.getName();
+    if (!needsWork && !needsPhoto) return;
+    if (outOfTime()) { // pick it up on the follow-up run
+      if (needsWork) pending.push(file.getName());
       return;
     }
-    if (Date.now() - started > TIME_BUDGET_MS) return; // pick it up next run
+
+    if (needsPhoto) {
+      var p = makePhoto_(file, photo, id);
+      trashQuietly_(entry.photoFileId !== p.id ? entry.photoFileId : null);
+      index.recipes.forEach(function (r) {
+        if (r.sourceFileId === id) { r.photoFileId = p.id; r.photoKind = p.kind; }
+      });
+      entry.photoFileId = p.id;
+      entry.photoKey = photoKey;
+      entry.photoVersion = PHOTO_VERSION;
+      changed = true;
+      saveIndex_(index);
+      return;
+    }
 
     var attempts = entry && entry.modified === modified && entry.status === 'error' ? entry.attempts : 0;
     try {
       var recipes = extractRecipes_(file);
       removeRecipesForSource_(index, id);
-      var photoFileId = makePhoto_(photo || file, id);
+      if (entry) trashQuietly_(entry.photoFileId);
+      var made = makePhoto_(file, photo, id);
       recipes.forEach(function (r, i) {
-        index.recipes.push(decorateRecipe_(r, i, file, photoFileId));
+        index.recipes.push(decorateRecipe_(r, i, file, made));
       });
       index.sources[id] = {
-        name: file.getName(), modified: modified, photoKey: photoKey,
+        name: file.getName(), modified: modified, photoKey: photoKey, photoVersion: PHOTO_VERSION,
         status: recipes.length ? 'ok' : 'no recipe found',
-        recipes: recipes.length, attempts: 0, error: null, photoFileId: photoFileId
+        recipes: recipes.length, attempts: 0, error: null, photoFileId: made.id
       };
     } catch (e) {
       index.sources[id] = {
-        name: file.getName(), modified: modified, photoKey: photoKey,
+        name: file.getName(), modified: modified, photoKey: entry ? entry.photoKey : null,
+        photoVersion: entry ? entry.photoVersion : null,
         status: 'error', recipes: entry ? entry.recipes : 0,
         attempts: attempts + 1, error: String(e.message || e),
         photoFileId: entry ? entry.photoFileId : null
@@ -187,7 +213,20 @@ function processInboxLocked_() {
   });
 
   if (changed) saveIndex_(index);
-  writeStatus_(index, plan.skipped);
+  writeStatus_(index, plan.skipped, pending);
+  scheduleContinuation_(outOfTime());
+}
+
+/** One-off trigger that carries on a minute later when a run ran out of time. */
+function scheduleContinuation_(needed) {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === CONTINUE_HANDLER) ScriptApp.deleteTrigger(t);
+  });
+  if (needed) ScriptApp.newTrigger(CONTINUE_HANDLER).timeBased().after(60 * 1000).create();
+}
+
+function continueProcessing() {
+  processInbox();
 }
 
 function collectFiles_(folder, dataFolderId, out) {
@@ -286,7 +325,7 @@ function extractRecipes_(file) {
   return parseExtractionResponse_(body).recipes;
 }
 
-function decorateRecipe_(r, i, file, photoFileId) {
+function decorateRecipe_(r, i, file, photo) {
   var owner = null;
   try { owner = file.getOwner(); } catch (e) { /* shared drives have no owner */ }
   r.id = file.getId() + '-' + i;
@@ -294,7 +333,8 @@ function decorateRecipe_(r, i, file, photoFileId) {
   r.sourceName = file.getName();
   r.addedBy = owner ? (owner.getName() || owner.getEmail()) : null;
   r.addedAt = file.getDateCreated().toISOString();
-  r.photoFileId = photoFileId;
+  r.photoFileId = photo.id;
+  r.photoKind = photo.kind;
   return r;
 }
 
@@ -302,17 +342,37 @@ function removeRecipesForSource_(index, sourceId) {
   index.recipes = index.recipes.filter(function (r) { return r.sourceFileId !== sourceId; });
 }
 
-/** Renders a JPEG preview (photo, or page 1 of a PDF) into the data folder. */
-function makePhoto_(file, sourceId) {
+/**
+ * Saves the recipe's picture into the data folder and returns {id, kind}:
+ *   'dish'  an uploaded photo with the same name, or the dish photo found inside the PDF
+ *   'page'  a picture of the recipe itself (page 1, or the photographed recipe card)
+ */
+function makePhoto_(file, uploaded, sourceId) {
   var dataFolder = DriveApp.getFolderById(requireProp_('DATA_FOLDER_ID'));
   var name = 'photo-' + sourceId + '.jpg';
   var existing = dataFolder.getFilesByName(name);
   while (existing.hasNext()) existing.next().setTrashed(true);
   try {
-    var blob = driveThumbnail_(file, PHOTO_SIZE).setName(name);
-    return dataFolder.createFile(blob).getId();
+    if (uploaded) return { id: dataFolder.createFile(driveThumbnail_(uploaded, PHOTO_SIZE).setName(name)).getId(), kind: 'dish' };
+    if (inputKind_(file) === 'pdf') {
+      var embedded = embeddedDishPhoto_(file);
+      if (embedded) return { id: dataFolder.createFile(embedded.setName(name)).getId(), kind: 'dish' };
+    }
+    return { id: dataFolder.createFile(driveThumbnail_(file, PHOTO_SIZE).setName(name)).getId(), kind: 'page' };
   } catch (e) {
     Logger.log('No photo for ' + file.getName() + ': ' + e);
+    return { id: null, kind: null };
+  }
+}
+
+function embeddedDishPhoto_(file) {
+  try {
+    var pdf = file.getMimeType() === 'application/pdf' ? file.getBlob() : exportAsPdf_(file);
+    var bytes = pdf.getBytes();
+    var pick = pickDishPhoto_(findPdfJpegs_(Utilities.newBlob(bytes).getDataAsString('ISO-8859-1')));
+    return pick ? Utilities.newBlob(bytes.slice(pick.start, pick.end), 'image/jpeg') : null;
+  } catch (e) {
+    Logger.log('Could not look for a photo in ' + file.getName() + ': ' + e);
     return null;
   }
 }
@@ -342,7 +402,7 @@ function trashQuietly_(fileId) {
 }
 
 /** Mirrors processing state into the Status tab so people can see what happened to their upload. */
-function writeStatus_(index, skipped) {
+function writeStatus_(index, skipped, pending) {
   var sheet = SpreadsheetApp.openById(requireProp_('SHEET_ID')).getSheetByName('Status');
   var now = new Date();
   var rows = Object.keys(index.sources).map(function (id) {
@@ -350,6 +410,7 @@ function writeStatus_(index, skipped) {
     var detail = s.error ? s.error + (s.attempts >= MAX_ATTEMPTS ? ' (gave up; re-upload or edit the file to retry)' : '') : '';
     return [s.name, s.status, s.recipes, detail, now];
   });
+  pending.forEach(function (name) { rows.push([name, 'waiting', '', 'Will be processed in the next few minutes', now]); });
   skipped.forEach(function (name) { rows.push([name, 'unsupported file type', 0, 'Use PDF, Google Doc, Word, image or text', now]); });
   rows.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
 
