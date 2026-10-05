@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "docs/styles.css"
+        ],
+        "createdAt": "2026-10-05T14:15:23.451Z",
+        "reason": "The flagged rule is the 3px countdown bar along the bottom of the 'hiding this' notice, which shrinks over 4 seconds; not a side-tab card border"
+      }
+    ]
+  }
+}

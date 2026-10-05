@@ -347,23 +347,46 @@ function needsMissing(r) {
   return [...new Set(allItems(r).filter((i) => !i.optional && missing.has(canon(i))).map(canon))];
 }
 
-/** Recipes matching the search, split into those you can make and those needing something you lack. */
+/** Is a recipe ingredient covered by one you've ticked? "tomato" covers "chopped tomato". */
+const covers = (ticked, ingredient) => ticked === ingredient ||
+  new RegExp(`\\b${ticked.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(ingredient);
+
+/** The ingredients you've ticked that this recipe uses. */
+function usesHave(r) {
+  if (!state.search.ingredients.length) return [];
+  const used = [...new Set(allItems(r).map(canon))];
+  return state.search.ingredients.filter((i) => used.some((u) => covers(i, u)));
+}
+
+/** Does the recipe need (not just optionally use) this ingredient? */
+const needsKey = (r, key) => allItems(r).some((i) => !i.optional && canon(i) === key);
+
+/**
+ * Recipes matching the search, split into those you can make and those needing
+ * something you lack. Ingredients you have never hide a recipe: they sort the ones
+ * using most of them to the top, then the ones needing fewest other ingredients.
+ */
 function matchingRecipes() {
   const { text, ingredients, course } = state.search;
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  const found = state.recipes.filter((r) => {
+  let found = state.recipes.filter((r) => {
     if (course && r.course !== course) return false;
-    const have = new Set(allItems(r).map(canon));
-    if (!ingredients.every((i) => have.has(i))) return false;
     if (!words.length) return true;
     const hay = [r.title, r.description, r.cuisine, r.course, r.author, r.book, r.sourceCredit, ...r.tags, ...allItems(r).map((i) => i.name)]
       .join(' ').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
-  return {
-    list: found.filter((r) => !needsMissing(r).length),
-    hidden: found.filter((r) => needsMissing(r).length),
-  };
+  let using = 0;
+  if (ingredients.length) {
+    const toGet = (r) => new Set(allItems(r).filter((i) => !i.optional).map(canon)
+      .filter((k) => !ingredients.some((i) => covers(i, k)) && !state.ingredients.get(k)?.staple)).size;
+    found = found.map((r) => ({ r, uses: usesHave(r).length, toGet: toGet(r) }))
+      .sort((a, b) => b.uses - a.uses || a.toGet - b.toGet)
+      .map((x) => x.r);
+  }
+  const list = found.filter((r) => !needsMissing(r).length);
+  if (ingredients.length) using = list.filter((r) => usesHave(r).length).length;
+  return { list, hidden: found.filter((r) => needsMissing(r).length), using };
 }
 
 /** Ingredients that most often appear alongside the selected ones, staples excluded. */
@@ -423,20 +446,25 @@ function recipeCard(r) {
   const missing = new Set(state.search.missing);
   const needs = needsMissing(r);
   const keys = keyIngredients(r);
+  const uses = usesHave(r);
   return `
-    <article class="card ${pigmentFor(r.course)} ${needs.length ? 'needs' : ''}">
+    <article class="card ${pigmentFor(r.course)} ${needs.length ? 'needs' : ''}" data-id="${esc(r.id)}">
       <a class="card-link" href="#/r/${encodeURIComponent(r.id)}">
         <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}" style="--shift:${hash(r.id) % 32}px"></div>
         <h3>${esc(r.title)}</h3>
         <p class="meta">${[t, r.servings && `serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
+        ${uses.length ? `<p class="meta uses-line">${icon('check')}<span>Uses ${esc(uses.join(', '))}</span></p>` : ''}
         ${needs.length ? `<p class="meta needs-line">Needs ${esc(needs.join(', '))}</p>` : ''}
       </a>
-      ${keys.length ? `<ul class="keys" aria-label="Main ingredients">${keys.map((k) => {
-        const lacking = missing.has(k);
-        return `<li><button class="key ${lacking ? 'lacking' : ''}" data-lack="${esc(k)}" aria-pressed="${lacking}"
-          aria-label="${esc(k)}: ${lacking ? 'you don’t have this. Tap if you do' : 'tap if you don’t have this'}">${icon(lacking ? 'close' : 'check')}<span>${esc(k)}</span></button></li>`;
-      }).join('')}</ul>` : ''}
+      ${keys.length ? `<ul class="keys" aria-label="Main ingredients">${keys.map((k) =>
+        `<li class="key ${missing.has(k) ? 'lacking' : ''}" data-key="${esc(k)}">${keyInner(k, missing.has(k))}</li>`).join('')}</ul>` : ''}
     </article>`;
+}
+
+/** One main ingredient on a card, with a cross for "I don't have this" (an undo arrow once crossed out). */
+function keyInner(k, lacking) {
+  return `<span>${esc(k)}</span><button class="key-x" data-lack="${esc(k)}" aria-pressed="${lacking}"
+    aria-label="${lacking ? `I do have ${esc(k)}` : `I don’t have ${esc(k)}`}">${icon(lacking ? 'undo' : 'close')}</button>`;
 }
 
 /** "By <author> · <book> · Website" with author and book linking to a search for them. */
@@ -545,13 +573,55 @@ function renderHome() {
     ing.value = '';
     update();
   };
-  const setLacking = (key, lacking) => {
+  const markLacking = (key, lacking) => {
     state.search.missing = state.search.missing.filter((m) => m !== key);
     if (lacking) {
       state.search.missing.push(key);
       state.search.ingredients = state.search.ingredients.filter((i) => i !== key);
     }
-    update();
+  };
+  const setLacking = (key, lacking) => { markLacking(key, lacking); update(); };
+
+  // Crossing out an ingredient fades the recipes that need it for a few seconds
+  // before hiding them, so a mis-tap can be undone in place.
+  const FADE_MS = 4000;
+  const leaving = new Map(); // ingredient -> timer
+  const setKeys = (key, lacking) => app.querySelectorAll(`.key[data-key="${CSS.escape(key)}"]`).forEach((li) => {
+    li.classList.toggle('lacking', lacking);
+    li.innerHTML = keyInner(key, lacking);
+  });
+  const startLeaving = (key) => {
+    setKeys(key, true);
+    for (const card of app.querySelectorAll('.card[data-id]')) {
+      if (!needsKey(state.byId.get(card.dataset.id), key)) continue;
+      card.style.setProperty('--fade', `${FADE_MS}ms`);
+      card.classList.add('leaving');
+      card.insertAdjacentHTML('beforeend', `<p class="leaving-line" data-leaving="${esc(key)}">
+        <span>No ${esc(key)}, so hiding this</span><button class="link" data-lack="${esc(key)}">Keep</button></p>`);
+    }
+    leaving.set(key, setTimeout(() => {
+      leaving.delete(key);
+      if (!app.contains(ing)) { markLacking(key, true); return; } // you've moved on to another page
+      const before = matchingRecipes().list.length;
+      setLacking(key, true);
+      const gone = before - matchingRecipes().list.length;
+      if (gone > 0) toast(`Hid ${gone === 1 ? '1 recipe that needs' : `${gone} recipes that need`} ${key}`, () => setLacking(key, false));
+    }, FADE_MS));
+  };
+  const stopLeaving = (key) => {
+    clearTimeout(leaving.get(key));
+    leaving.delete(key);
+    setKeys(key, false);
+    app.querySelectorAll(`.leaving-line[data-leaving="${CSS.escape(key)}"]`).forEach((line) => {
+      const card = line.closest('.card');
+      line.remove();
+      if (!card.querySelector('.leaving-line')) card.classList.remove('leaving');
+    });
+  };
+  // Anything else that redraws the list settles the fades first.
+  const settleLeaving = () => {
+    for (const [key, timer] of leaving) { clearTimeout(timer); markLacking(key, true); }
+    leaving.clear();
   };
   ing.onchange = () => addIngredient(ing.value);
   ing.onkeydown = (e) => {
@@ -568,7 +638,8 @@ function renderHome() {
   }, { signal: homeCtl.signal });
 
   function update() {
-    const { list, hidden } = matchingRecipes();
+    settleLeaving();
+    const { list, hidden, using } = matchingRecipes();
     const { ingredients, missing } = state.search;
     app.querySelectorAll('[data-course]').forEach((t) => {
       const on = t.dataset.course === state.search.course;
@@ -579,23 +650,28 @@ function renderHome() {
       ...ingredients.map((i) => `<button class="chip have" data-remove="${esc(i)}" aria-label="Remove ${esc(i)}">${icon('check')}${esc(i)} ${icon('close')}</button>`),
       ...missing.map((i) => `<button class="chip lacking" data-unlack="${esc(i)}" aria-label="I do have ${esc(i)} after all">No ${esc(i)} ${icon('close')}</button>`),
     ].join('');
-    const sugg = ingredients.length ? coIngredientSuggestions(list) : commonIngredients();
+    const sugg = ingredients.length ? coIngredientSuggestions(list.slice(0, using)) : commonIngredients();
     suggest.hidden = !open || !sugg.length;
     ing.setAttribute('aria-expanded', !suggest.hidden);
     suggest.innerHTML = sugg.length ? `
       <p class="suggest-head">${ingredients.length ? 'Goes well with' : 'Tap what you have'}</p>
       <div class="suggest-chips">${sugg.map(([n, c]) => `<button class="chip" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}</div>` : '';
     const filtered = state.search.text || ingredients.length || missing.length || state.search.course;
-    document.getElementById('count').textContent = filtered
-      ? `${list.length} of ${state.recipes.length} recipes`
-      : `${state.recipes.length} recipes`;
+    const shown = filtered ? `${list.length} of ${state.recipes.length} recipes` : `${state.recipes.length} recipes`;
+    document.getElementById('count').textContent = !ingredients.length ? shown
+      : !using ? `None of ${list.length} recipes use what you’ve ticked`
+      : `${using} of ${list.length} recipes use what you have, best matches first`;
     const grid = document.getElementById('grid');
     if (!state.recipes.length) {
       grid.innerHTML = '<p class="empty">No recipes yet. <a href="#/inbox">Add the first one</a>.</p>';
     } else if (!list.length) {
       grid.innerHTML = '<p class="empty">Nothing matches all of that. <button class="link" data-clear>Clear the search</button></p>';
     } else {
-      grid.innerHTML = list.map(recipeCard).join('');
+      const cards = list.map(recipeCard);
+      if (using && using < list.length) {
+        cards.splice(using, 0, '<p class="grid-break">These don’t use anything you’ve ticked</p>');
+      }
+      grid.innerHTML = cards.join('');
       hydratePhotos(grid);
     }
     const hid = document.getElementById('hidden');
@@ -622,13 +698,9 @@ function renderHome() {
     if (add) addIngredient(add.dataset.add);
     if (lack) {
       const key = lack.dataset.lack;
-      const nowLacking = !state.search.missing.includes(key);
-      const before = matchingRecipes().list.length;
-      setLacking(key, nowLacking);
-      const gone = before - matchingRecipes().list.length;
-      if (nowLacking && gone > 0) {
-        toast(`Hid ${gone === 1 ? '1 recipe that needs' : `${gone} recipes that need`} ${key}`, () => setLacking(key, false));
-      }
+      if (leaving.has(key)) stopLeaving(key);
+      else if (state.search.missing.includes(key)) setLacking(key, false);
+      else startLeaving(key);
     }
     if (course) { state.search.course = course.dataset.course; update(); }
     if (e.target.closest('[data-show-hidden]')) { state.search.showHidden = !state.search.showHidden; update(); }

@@ -25,6 +25,18 @@ var EXTRACT_VERSION = 2;
 var PHOTO_VERSION = 3;
 var CONTINUE_HANDLER = 'continueProcessing';
 
+// Failures that say nothing about the file: Claude busy, rate-limited, out of
+// credit or refusing the key, or the network failing (an unreadable reply is
+// usually an outage page). These never count towards giving up on a file; it is
+// simply tried again on the next run.
+var SERVICE_ERROR = /credit balance|billing|rate_limit|overloaded|api_error|authentication_error|permission_error|HTTP 5\d\d|HTTP 429|timed? ?out|Address unavailable|too many times|unavailable|Unexpected token|not valid JSON|JSON\.parse/i;
+var CREDIT_ERROR = /credit balance|billing/i;
+var KEY_ERROR = /authentication_error|permission_error/i;
+
+function isServiceError_(message) {
+  return SERVICE_ERROR.test(String(message || ''));
+}
+
 var IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
 var CLAUDE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -141,6 +153,8 @@ async function processInboxLocked_() {
   var changed = false;
 
   var pending = [];
+  var held = []; // new files left for the next run because Claude is unavailable
+  var claudeDown = false;
   var outOfTime = function () { return Date.now() - started > TIME_BUDGET_MS; };
 
   for (const item of plan.sources) {
@@ -154,11 +168,15 @@ async function processInboxLocked_() {
 
     const needsWork = !entry || entry.modified !== modified || entry.photoKey !== photoKey ||
       (entry.extractVersion !== EXTRACT_VERSION && entry.status !== 'error') ||
-      (entry.status === 'error' && entry.attempts < MAX_ATTEMPTS);
+      (entry.status === 'error' && (entry.attempts < MAX_ATTEMPTS || isServiceError_(entry.error)));
     const needsPhoto = !needsWork && entry.status === 'ok' && (entry.photoVersion !== PHOTO_VERSION ||
       (entry.photoRetry && (entry.photoAttempts || 0) < MAX_ATTEMPTS));
     if (entry) entry.name = file.getName();
     if (!needsWork && !needsPhoto) continue;
+    if (needsWork && claudeDown) { // no point trying more files this run
+      if (!entry) held.push(file.getName());
+      continue;
+    }
     if (outOfTime()) { // pick it up on the follow-up run
       if (needsWork) pending.push(file.getName());
       continue;
@@ -193,12 +211,22 @@ async function processInboxLocked_() {
         recipes: recipes.length, attempts: 0, error: null
       };
     } catch (e) {
+      const message = String(e.message || e);
+      const service = isServiceError_(message);
+      if (service) claudeDown = true;
+      if (service && entry && entry.status === 'ok') {
+        // An edited file that worked before: keep its recipes and try again next run.
+        entry.modified = null;
+        Logger.log('Claude unavailable for ' + file.getName() + ': ' + message);
+        changed = true;
+        continue;
+      }
       index.sources[id] = {
         name: file.getName(), modified: modified, photoKey: photoKey, extractVersion: EXTRACT_VERSION,
         status: 'error', recipes: entry ? entry.recipes : 0,
-        attempts: attempts + 1, error: String(e.message || e)
+        attempts: service ? attempts : attempts + 1, error: message
       };
-      Logger.log('Failed on ' + file.getName() + ': ' + e);
+      Logger.log('Failed on ' + file.getName() + ': ' + message);
     }
     changed = true;
     saveIndex_(index); // save after each file so a timeout loses nothing
@@ -214,7 +242,7 @@ async function processInboxLocked_() {
   });
 
   if (changed) saveIndex_(index);
-  writeStatus_(index, plan.skipped, pending);
+  writeStatus_(index, plan.skipped, pending, held);
   scheduleContinuation_(outOfTime());
 }
 
@@ -227,6 +255,22 @@ function scheduleContinuation_(needed) {
 }
 
 async function continueProcessing() {
+  await processInbox();
+}
+
+/**
+ * Run by hand from the editor to try every failed file again now, including
+ * ones the job gave up on (for example after fixing a broken file in place).
+ */
+async function retryFailed() {
+  var index = loadIndex_();
+  var count = 0;
+  Object.keys(index.sources).forEach(function (id) {
+    var s = index.sources[id];
+    if (s.status === 'error') { s.attempts = 0; count++; }
+  });
+  saveIndex_(index);
+  Logger.log('Trying ' + count + ' failed files again.');
   await processInbox();
 }
 
@@ -323,7 +367,12 @@ function extractRecipes_(file, pdf) {
     payload: JSON.stringify(request),
     muteHttpExceptions: true
   });
-  var body = JSON.parse(resp.getContentText());
+  var body;
+  try {
+    body = JSON.parse(resp.getContentText());
+  } catch (e) {
+    throw new Error('HTTP ' + resp.getResponseCode() + ' from the Claude API');
+  }
   return parseExtractionResponse_(body).recipes;
 }
 
@@ -503,14 +552,19 @@ function trashQuietly_(fileId) {
 }
 
 /** Mirrors processing state into the Status tab so people can see what happened to their upload. */
-function writeStatus_(index, skipped, pending) {
+function writeStatus_(index, skipped, pending, held) {
   var sheet = SpreadsheetApp.openById(requireProp_('SHEET_ID')).getSheetByName('Status');
   var now = new Date();
   var rows = Object.keys(index.sources).map(function (id) {
     var s = index.sources[id];
-    var detail = s.error ? s.error + (s.attempts >= MAX_ATTEMPTS ? ' (gave up; re-upload or edit the file to retry)' : '') : '';
+    var detail = '';
+    if (s.error && CREDIT_ERROR.test(s.error)) detail = 'Out of Claude credit when last tried. Tries again every hour.';
+    else if (s.error && KEY_ERROR.test(s.error)) detail = 'Claude refused the API key. Check ANTHROPIC_API_KEY in Script properties. Tries again every hour.';
+    else if (s.error && isServiceError_(s.error)) detail = s.error + ' (not a problem with the file; tries again every hour)';
+    else if (s.error) detail = s.error + (s.attempts >= MAX_ATTEMPTS ? ' (gave up; re-upload or edit the file to retry)' : ' (tries again next hour)');
     return [s.name, s.status, s.recipes, detail, now];
   });
+  held.forEach(function (name) { rows.push([name, 'waiting', '', 'Claude was unavailable; tries again next hour', now]); });
   pending.forEach(function (name) { rows.push([name, 'waiting', '', 'Will be processed in the next few minutes', now]); });
   skipped.forEach(function (name) { rows.push([name, 'unsupported file type', 0, 'Use PDF, Google Doc, Word, image or text', now]); });
   rows.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
