@@ -21,8 +21,9 @@ const state = {
   notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]
   canNote: null,          // can this user write to the notes sheet?
   photos: new Map(),      // fileId -> Promise<objectURL|null>
-  search: { text: '', ingredients: [], course: '' },
+  search: { text: '', ingredients: [], missing: [], course: '', showHidden: false },
 };
+const emptySearch = (text = '') => ({ text, ingredients: [], missing: [], course: '', showHidden: false });
 
 const app = document.getElementById('app');
 document.getElementById('brand').textContent = CFG.siteTitle;
@@ -56,19 +57,22 @@ function banner(html, kind = 'info') {
   el.hidden = !html;
 }
 
-// Each course is bound in its own cloth; unknown courses get one by hash.
-const COURSE_CLOTHS = {
-  main: 1, dinner: 1, lunch: 2, starter: 2, soup: 2, side: 5, salad: 5, vegetable: 5,
-  dessert: 3, pudding: 3, sweet: 3, baking: 4, bread: 4, cake: 4, breakfast: 4, brunch: 4,
-  drink: 2, sauce: 5, snack: 5, preserve: 3,
+// Each course has its own clay pigment; unknown courses get one by hash.
+// 1 terracotta, 2 ochre, 3 mint, 4 rose clay, 5 majorelle blue, 6 olive.
+const COURSE_PIGMENTS = {
+  main: 1, dinner: 1, side: 3, salad: 3, vegetable: 3, dessert: 4, pudding: 4, sweet: 4,
+  baking: 2, bread: 2, cake: 2, breakfast: 2, brunch: 2, lunch: 5, starter: 5, soup: 5, drink: 5,
+  sauce: 6, snack: 6, preserve: 6,
 };
-function clothFor(course) {
-  if (!course) return 'cloth-0';
-  const key = course.toLowerCase().replace(/s$/, '');
-  if (key in COURSE_CLOTHS) return `cloth-${COURSE_CLOTHS[key]}`;
+function hash(s) {
   let h = 0;
-  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return `cloth-${1 + (h % 5)}`;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h;
+}
+function pigmentFor(course) {
+  if (!course) return 'pg-1';
+  const key = course.toLowerCase().replace(/s$/, '');
+  return `pg-${COURSE_PIGMENTS[key] ?? 1 + (hash(key) % 6)}`;
 }
 
 // ---------- ticks: shared by the recipe page and cooking mode ----------
@@ -144,11 +148,11 @@ function showSignIn(message = '') {
   setSignedIn(false);
   app.innerHTML = `
     <section class="signin">
-      <div class="cover cloth frame">
-        <h1 class="foil">${esc(CFG.siteTitle)}</h1>
+      <div class="signin-card">
+        <h1 class="wordmark">${esc(CFG.siteTitle)}</h1>
         <p>Our shared recipes. Sign in with the Google account the recipe folder is shared with.</p>
         ${message ? `<p class="error">${esc(message)}</p>` : ''}
-        <button class="plate-button" id="signin">Sign in with Google</button>
+        <button class="button primary" id="signin">Sign in with Google</button>
       </div>
     </section>`;
   document.getElementById('signin').onclick = async () => {
@@ -336,10 +340,18 @@ async function inboxAccess() {
 
 // ---------- search ----------
 
+/** Does the recipe need (not just optionally use) any ingredient the user doesn't have? */
+function needsMissing(r) {
+  if (!state.search.missing.length) return [];
+  const missing = new Set(state.search.missing);
+  return [...new Set(allItems(r).filter((i) => !i.optional && missing.has(canon(i))).map(canon))];
+}
+
+/** Recipes matching the search, split into those you can make and those needing something you lack. */
 function matchingRecipes() {
   const { text, ingredients, course } = state.search;
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
-  return state.recipes.filter((r) => {
+  const found = state.recipes.filter((r) => {
     if (course && r.course !== course) return false;
     const have = new Set(allItems(r).map(canon));
     if (!ingredients.every((i) => have.has(i))) return false;
@@ -348,17 +360,21 @@ function matchingRecipes() {
       .join(' ').toLowerCase();
     return words.every((w) => hay.includes(w));
   });
+  return {
+    list: found.filter((r) => !needsMissing(r).length),
+    hidden: found.filter((r) => needsMissing(r).length),
+  };
 }
 
 /** Ingredients that most often appear alongside the selected ones, staples excluded. */
 function coIngredientSuggestions(recipes, limit = 12) {
-  const selected = new Set(state.search.ingredients);
+  const skip = new Set([...state.search.ingredients, ...state.search.missing]);
   const counts = new Map();
   for (const r of recipes) {
     const seen = new Set();
     for (const item of allItems(r)) {
       const key = canon(item);
-      if (seen.has(key) || selected.has(key) || state.ingredients.get(key)?.staple) continue;
+      if (seen.has(key) || skip.has(key) || state.ingredients.get(key)?.staple) continue;
       seen.add(key);
       counts.set(key, (counts.get(key) || 0) + 1);
     }
@@ -366,21 +382,61 @@ function coIngredientSuggestions(recipes, limit = 12) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit);
 }
 
+/** The ingredients used in the most recipes, staples excluded: offered when the ingredient box opens. */
+function commonIngredients(limit = 16) {
+  const skip = new Set([...state.search.ingredients, ...state.search.missing]);
+  return [...state.ingredients.values()]
+    .filter((e) => !e.staple && !skip.has(e.name))
+    .sort((a, b) => b.recipeIds.size - a.recipeIds.size || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map((e) => [e.name, e.recipeIds.size]);
+}
+
+// Units that tell us an ingredient is the bulk of a dish, in grams or millilitres.
+const BULK_UNITS = { g: 1, gram: 1, kg: 1000, ml: 1, l: 1000, litre: 1000, liter: 1000, oz: 28, lb: 454 };
+
+/**
+ * The few ingredients that decide whether you can make this: the bulk of the dish
+ * first (200 g or more), then the ones fewest other recipes use. Staples and
+ * optional extras are left out.
+ */
+function keyIngredients(r, limit = 3) {
+  const out = new Map();
+  for (const item of allItems(r)) {
+    const key = canon(item);
+    const e = state.ingredients.get(key);
+    if (item.optional || !e || e.staple || out.has(key)) continue;
+    const unit = (item.unit || '').toLowerCase().replace(/\.$/, '').replace(/s$/, '');
+    const amount = (parseFloat(item.quantity) || 0) * (BULK_UNITS[unit] || 0);
+    out.set(key, { key, amount, bulk: amount >= 200, uses: e.recipeIds.size });
+  }
+  return [...out.values()]
+    .sort((a, b) => b.bulk - a.bulk || (a.bulk && b.amount - a.amount) || a.uses - b.uses || a.key.localeCompare(b.key))
+    .slice(0, limit)
+    .map((x) => x.key);
+}
+
 // ---------- views ----------
 
 function recipeCard(r) {
   const t = fmtMinutes(totalMinutes(r));
+  const missing = new Set(state.search.missing);
+  const needs = needsMissing(r);
+  const keys = keyIngredients(r);
   return `
-    <a class="card" href="#/r/${encodeURIComponent(r.id)}">
-      <div class="cover-thumb cloth ${clothFor(r.course)} frame ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}">
-        <span class="stamp" aria-hidden="true">${esc(r.title)}</span>
-      </div>
-      <div class="card-body">
+    <article class="card ${pigmentFor(r.course)} ${needs.length ? 'needs' : ''}">
+      <a class="card-link" href="#/r/${encodeURIComponent(r.id)}">
+        <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}" style="--shift:${hash(r.id) % 32}px"></div>
         <h3>${esc(r.title)}</h3>
-        ${r.author || r.book ? `<p class="meta">${esc([r.author, r.book].filter(Boolean).join(' · '))}</p>` : ''}
-        <p class="meta">${[r.course, t, r.servings && `Serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
-      </div>
-    </a>`;
+        <p class="meta">${[t, r.servings && `serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
+        ${needs.length ? `<p class="meta needs-line">Needs ${esc(needs.join(', '))}</p>` : ''}
+      </a>
+      ${keys.length ? `<ul class="keys" aria-label="Main ingredients">${keys.map((k) => {
+        const lacking = missing.has(k);
+        return `<li><button class="key ${lacking ? 'lacking' : ''}" data-lack="${esc(k)}" aria-pressed="${lacking}"
+          aria-label="${esc(k)}: ${lacking ? 'you don’t have this. Tap if you do' : 'tap if you don’t have this'}">${icon(lacking ? 'close' : 'check')}<span>${esc(k)}</span></button></li>`;
+      }).join('')}</ul>` : ''}
+    </article>`;
 }
 
 /** "By <author> · <book> · Website" with author and book linking to a search for them. */
@@ -399,7 +455,7 @@ document.addEventListener('click', (e) => {
   const link = e.target.closest('[data-search]');
   if (!link) return;
   e.preventDefault();
-  state.search = { text: link.dataset.search, ingredients: [], course: '' };
+  state.search = emptySearch(link.dataset.search);
   if (location.hash === '#/' || location.hash === '') route();
   else location.hash = '#/';
 });
@@ -412,7 +468,7 @@ function hydratePhotos(root) {
       const r = state.byId.get(e.target.dataset.photo);
       recipePhotoUrl(r).then((url) => {
         if (!url) return;
-        // Photos are pasted in whole and never tinted; on a cover they sit in a thin mount.
+        // Photos are shown plainly, never tinted or framed.
         const img = document.createElement('img');
         img.className = 'photo';
         img.src = url;
@@ -437,56 +493,99 @@ function zoom(url, alt) {
   document.body.append(z);
 }
 
+/** A short message at the bottom of the screen with an Undo button. */
+let toastTimer = null;
+function toast(text, undo) {
+  document.querySelector('.toast')?.remove();
+  clearTimeout(toastTimer);
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<span>${esc(text)}</span>${undo ? '<button class="link">Undo</button>' : ''}`;
+  if (undo) el.querySelector('button').onclick = () => { el.remove(); undo(); };
+  document.body.append(el);
+  toastTimer = setTimeout(() => el.remove(), 6000);
+}
+
+let homeCtl = null;
+
 function renderHome() {
   const courses = [...new Set(state.recipes.map((r) => r.course).filter(Boolean))].sort();
   const allIngredients = [...state.ingredients.values()].filter((e) => !e.staple).map((e) => e.name).sort();
   app.innerHTML = `
-    <section class="finder endpaper">
-      <div class="bookplate">
-        <label class="field"><span>Search by name, book, author or cuisine</span>
-          <input id="q" type="search" placeholder="Search recipes" value="${esc(state.search.text)}" autocomplete="off"></label>
-        <label class="field"><span>Ingredients you have</span>
-          <input id="ing" list="ing-list" placeholder="Add an ingredient" autocomplete="off"></label>
+    <section class="finder">
+      <div class="finder-panel">
+        <label class="field"><span class="vh">Search by name, book, author or cuisine</span>${icon('search')}
+          <input id="q" type="search" placeholder="Search recipes, books, cooks" value="${esc(state.search.text)}" autocomplete="off"></label>
+        <label class="field"><span class="vh">Ingredients you have</span>${icon('carrot')}
+          <input id="ing" list="ing-list" placeholder="Ingredients you have" autocomplete="off" aria-controls="suggest"></label>
         <datalist id="ing-list">${allIngredients.map((i) => `<option value="${esc(i)}">`).join('')}</datalist>
         <div id="chips" class="chips"></div>
-        <div id="suggest" class="suggest"></div>
+        <div id="suggest" class="suggest" hidden></div>
       </div>
     </section>
-    <section class="shelf">
-      <nav class="thumb-index" aria-label="Courses">
-        ${[['', 'All'], ...courses.map((c) => [c, c])].map(([value, label]) =>
-          `<button class="tab cloth ${value ? clothFor(value) : 'cloth-0'}" data-course="${esc(value)}">${esc(label)}</button>`).join('')}
-      </nav>
-      <p id="count" class="count" aria-live="polite"></p>
-      <div id="grid" class="grid"></div>
-    </section>`;
+    <nav class="swatches" aria-label="Courses">
+      ${[['', 'All'], ...courses.map((c) => [c, c])].map(([value, label]) =>
+        `<button class="swatch ${value ? pigmentFor(value) : 'all'}" data-course="${esc(value)}"><span class="dot" aria-hidden="true"></span><span class="name">${esc(label)}</span></button>`).join('')}
+    </nav>
+    <p id="count" class="count" aria-live="polite"></p>
+    <div id="grid" class="grid"></div>
+    <div id="hidden" class="hidden-recipes"></div>`;
 
   const q = document.getElementById('q');
   const ing = document.getElementById('ing');
+  const suggest = document.getElementById('suggest');
+  let open = false; // the ingredient suggestions stay open while you pick, until you tap elsewhere
+
   q.oninput = () => { state.search.text = q.value; update(); };
   const addIngredient = (name) => {
     const key = name.toLowerCase().trim();
     if (key && !state.search.ingredients.includes(key)) state.search.ingredients.push(key);
+    state.search.missing = state.search.missing.filter((m) => m !== key);
     ing.value = '';
     update();
   };
+  const setLacking = (key, lacking) => {
+    state.search.missing = state.search.missing.filter((m) => m !== key);
+    if (lacking) {
+      state.search.missing.push(key);
+      state.search.ingredients = state.search.ingredients.filter((i) => i !== key);
+    }
+    update();
+  };
   ing.onchange = () => addIngredient(ing.value);
-  ing.onkeydown = (e) => { if (e.key === 'Enter') addIngredient(ing.value); };
+  ing.onkeydown = (e) => {
+    if (e.key === 'Enter') addIngredient(ing.value);
+    if (e.key === 'Escape') { open = false; update(); }
+  };
+  ing.onfocus = () => { if (!open) { open = true; update(); } };
+
+  homeCtl?.abort();
+  homeCtl = new AbortController();
+  document.addEventListener('pointerdown', (e) => {
+    if (!app.contains(ing)) { homeCtl.abort(); return; }
+    if (open && !e.target.closest('.finder')) { open = false; update(); }
+  }, { signal: homeCtl.signal });
 
   function update() {
-    const list = matchingRecipes();
+    const { list, hidden } = matchingRecipes();
+    const { ingredients, missing } = state.search;
     app.querySelectorAll('[data-course]').forEach((t) => {
       const on = t.dataset.course === state.search.course;
       t.classList.toggle('on', on);
       t.setAttribute('aria-pressed', on);
     });
-    document.getElementById('chips').innerHTML = state.search.ingredients
-      .map((i) => `<button class="label on" data-remove="${esc(i)}" aria-label="Remove ${esc(i)}">${esc(i)} ${icon('close')}</button>`).join('');
-    const sugg = state.search.ingredients.length ? coIngredientSuggestions(list) : [];
-    document.getElementById('suggest').innerHTML = sugg.length
-      ? `<span>Goes well with</span> ${sugg.map(([n, c]) => `<button class="label" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}`
-      : '';
-    const filtered = state.search.text || state.search.ingredients.length || state.search.course;
+    document.getElementById('chips').innerHTML = [
+      ...ingredients.map((i) => `<button class="chip have" data-remove="${esc(i)}" aria-label="Remove ${esc(i)}">${icon('check')}${esc(i)} ${icon('close')}</button>`),
+      ...missing.map((i) => `<button class="chip lacking" data-unlack="${esc(i)}" aria-label="I do have ${esc(i)} after all">No ${esc(i)} ${icon('close')}</button>`),
+    ].join('');
+    const sugg = ingredients.length ? coIngredientSuggestions(list) : commonIngredients();
+    suggest.hidden = !open || !sugg.length;
+    ing.setAttribute('aria-expanded', !suggest.hidden);
+    suggest.innerHTML = sugg.length ? `
+      <p class="suggest-head">${ingredients.length ? 'Goes well with' : 'Tap what you have'}</p>
+      <div class="suggest-chips">${sugg.map(([n, c]) => `<button class="chip" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}</div>` : '';
+    const filtered = state.search.text || ingredients.length || missing.length || state.search.course;
     document.getElementById('count').textContent = filtered
       ? `${list.length} of ${state.recipes.length} recipes`
       : `${state.recipes.length} recipes`;
@@ -499,16 +598,42 @@ function renderHome() {
       grid.innerHTML = list.map(recipeCard).join('');
       hydratePhotos(grid);
     }
+    const hid = document.getElementById('hidden');
+    if (!hidden.length) {
+      hid.innerHTML = '';
+    } else {
+      const n = hidden.length === 1 ? '1 recipe needs' : `${hidden.length} recipes need`;
+      hid.innerHTML = `
+        <p class="hidden-line">${n} something you don’t have.
+          <button class="link" data-show-hidden>${state.search.showHidden ? 'Hide them' : 'Show them'}</button></p>
+        ${state.search.showHidden ? `<div class="grid">${hidden.map(recipeCard).join('')}</div>` : ''}`;
+      if (state.search.showHidden) hydratePhotos(hid);
+    }
   }
+
   app.onclick = (e) => {
     const rm = e.target.closest('[data-remove]');
+    const unlack = e.target.closest('[data-unlack]');
     const add = e.target.closest('[data-add]');
+    const lack = e.target.closest('[data-lack]');
     const course = e.target.closest('[data-course]');
     if (rm) { state.search.ingredients = state.search.ingredients.filter((i) => i !== rm.dataset.remove); update(); }
+    if (unlack) setLacking(unlack.dataset.unlack, false);
     if (add) addIngredient(add.dataset.add);
+    if (lack) {
+      const key = lack.dataset.lack;
+      const nowLacking = !state.search.missing.includes(key);
+      const before = matchingRecipes().list.length;
+      setLacking(key, nowLacking);
+      const gone = before - matchingRecipes().list.length;
+      if (nowLacking && gone > 0) {
+        toast(`Hid ${gone === 1 ? '1 recipe that needs' : `${gone} recipes that need`} ${key}`, () => setLacking(key, false));
+      }
+    }
     if (course) { state.search.course = course.dataset.course; update(); }
+    if (e.target.closest('[data-show-hidden]')) { state.search.showHidden = !state.search.showHidden; update(); }
     if (e.target.closest('[data-clear]')) {
-      state.search = { text: '', ingredients: [], course: '' };
+      state.search = emptySearch();
       q.value = '';
       update();
     }
@@ -545,7 +670,6 @@ function onTick(r) {
 function renderRecipe(id) {
   const r = state.byId.get(id);
   if (!r) { app.innerHTML = '<p class="center">Recipe not found. <a href="#/">Back to all recipes</a></p>'; return; }
-  const cloth = clothFor(r.course);
   const t = ticks.get(r.id);
   const started = t.pos > 0 || t.steps.length > 0;
   const est = r.timesAreEstimated ? '<abbr title="Estimated, not stated in the original">est.</abbr>' : '';
@@ -556,15 +680,15 @@ function renderRecipe(id) {
   const cookHref = `#/r/${encodeURIComponent(r.id)}/cook`;
 
   app.innerHTML = `
-    <article class="recipe">
+    <article class="recipe ${pigmentFor(r.course)}">
       <a href="#/" class="back">${icon('back')} All recipes</a>
       <header class="recipe-head">
-        <div class="recipe-cover cloth ${cloth} frame">
-          <h1 class="foil">${esc(r.title)}</h1>
+        <div class="recipe-intro">
+          <h1>${esc(r.title)}</h1>
           ${byline(r)}
           ${r.description ? `<p class="lede">${esc(r.description)}</p>` : ''}
           ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>` : ''}
-          ${r.steps.length ? `<a class="ribbon" href="${cookHref}">${icon('ribbon')} ${started ? `Carry on cooking, step ${Math.min(t.pos, r.steps.length - 1) + 1}` : 'Start cooking'}</a>` : ''}
+          ${r.steps.length ? `<a class="button primary cook-start" href="${cookHref}">${icon('pan')} ${started ? `Carry on cooking, step ${Math.min(t.pos, r.steps.length - 1) + 1}` : 'Start cooking'}</a>` : ''}
         </div>
         ${r.photoKind === 'dish' && r.photoFileId ? `<figure class="plate" data-photo="${esc(r.id)}"></figure>` : ''}
       </header>
@@ -572,20 +696,20 @@ function renderRecipe(id) {
 
       <div class="columns">
         <section class="ingredients">
-          <h2 class="spine-label cloth ${cloth}">Ingredients</h2>
+          <h2 class="section-title">Ingredients</h2>
           ${ingredientList(r)}
         </section>
 
         <section class="method">
           <div class="method-tabs" role="tablist">
-            <button role="tab" class="tab cloth ${cloth} on" aria-selected="true" data-tab="steps">Steps</button>
-            <button role="tab" class="tab cloth ${cloth}" aria-selected="false" data-tab="flow">Flowchart</button>
+            <button role="tab" class="seg on" aria-selected="true" data-tab="steps">Steps</button>
+            <button role="tab" class="seg" aria-selected="false" data-tab="flow">Flowchart</button>
             <label class="awake"><input type="checkbox" id="awake"> Keep screen on</label>
           </div>
           <ol class="steps" id="steps">${r.steps.map((s, i) => `
             <li class="${started && i === t.pos ? 'here' : ''}">
               <label class="tick"><input type="checkbox" data-tick="steps:${esc(s.id)}" ${t.steps.includes(s.id) ? 'checked' : ''}>
-                <span class="num cloth ${cloth}">${i + 1}</span>
+                <span class="num">${i + 1}</span>
                 <span class="txt">${esc(s.text)}${s.minutes ? ` <span class="step-time">(${fmtMinutes(s.minutes)})</span>` : ''}</span></label>
             </li>`).join('')}
           </ol>
@@ -594,12 +718,12 @@ function renderRecipe(id) {
       </div>
 
       ${r.sourceNotes.length ? `<section>
-        <h2 class="spine-label cloth ${cloth}">From the original</h2>
+        <h2 class="section-title">From the original</h2>
         <div class="slip"><ul class="tips">${r.sourceNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>
       </section>` : ''}
 
       <section class="notes">
-        <h2 class="spine-label cloth ${cloth}">Our notes</h2>
+        <h2 class="section-title">Our notes</h2>
         <div id="notes"><p class="muted">Loading notes…</p></div>
         <form id="note-form" hidden>
           <label class="vh" for="note-text">Add a note</label>
@@ -620,7 +744,7 @@ function renderRecipe(id) {
   app.onclick = null;
   app.onchange = onTick(r);
 
-  const tabs = app.querySelectorAll('.tab');
+  const tabs = app.querySelectorAll('.seg');
   tabs.forEach((tab) => tab.onclick = () => {
     tabs.forEach((x) => { x.classList.toggle('on', x === tab); x.setAttribute('aria-selected', x === tab); });
     const flow = tab.dataset.tab === 'flow';
@@ -719,7 +843,7 @@ document.addEventListener('visibilitychange', async () => {
   if (wakeLock && document.visibilityState === 'visible') await takeWakeLock();
 });
 
-// ---------- cooking mode: one step per screen, the ribbon marks your place ----------
+// ---------- cooking mode: one step per screen, a rail shows how far you are ----------
 
 let cookCtl = null;
 
@@ -747,8 +871,8 @@ function renderCook(id) {
 
   app.onclick = null;
   app.innerHTML = `
-    <section class="cook" aria-label="Cooking ${esc(r.title)}">
-      <header class="cook-bar cloth ${clothFor(r.course)}">
+    <section class="cook ${pigmentFor(r.course)}" aria-label="Cooking ${esc(r.title)}">
+      <header class="cook-bar">
         <a class="icon-button" href="${recipeHref}" aria-label="Leave cooking mode">${icon('close')}</a>
         <span class="title">${esc(r.title)}</span>
         <button class="icon-button" id="ings" aria-expanded="false" aria-controls="drawer">${icon('list')} Ingredients</button>
@@ -781,7 +905,7 @@ function renderCook(id) {
   function show() {
     const done = pos >= n; // the "that's everything" page after the last step
     ticks.setPos(r.id, Math.min(pos, n - 1));
-    mark.style.setProperty('--to', `calc(${((Math.min(pos, n - 1) + 0.5) / n) * 100}% + 10px)`);
+    mark.style.setProperty('--to', `${((Math.min(pos, n - 1) + 0.5) / n) * 100}%`);
     app.querySelectorAll('[data-dot]').forEach((d) => d.classList.toggle('done', ticks.has(r.id, 'steps', d.dataset.dot)));
     if (done) {
       stepEl.innerHTML = `
@@ -806,7 +930,6 @@ function renderCook(id) {
     page.scrollTop = 0;
   }
   function go(delta) {
-    if (delta > 0 && pos < n) ticks.set(r.id, 'steps', r.steps[pos].id, true); // moving on means it's done
     if (delta > 0 && pos >= n) { location.hash = recipeHref; return; }
     pos = Math.max(0, Math.min(n, pos + delta));
     show();
@@ -851,8 +974,8 @@ function loadMermaid() {
       startOnLoad: false, theme: 'base', securityLevel: 'strict',
       flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
       themeVariables: dark
-        ? { background: '#121813', primaryColor: '#1a221c', primaryBorderColor: '#6f9a7e', primaryTextColor: '#e8ebe2', lineColor: '#a2ac9c', fontFamily: 'system-ui, sans-serif', fontSize: '15px' }
-        : { background: '#f6f7f3', primaryColor: '#ffffff', primaryBorderColor: '#1f3a2b', primaryTextColor: '#17211b', lineColor: '#55604f', fontFamily: 'system-ui, sans-serif', fontSize: '15px' },
+        ? { background: '#1e1612', primaryColor: '#2a201a', primaryBorderColor: '#e0784f', primaryTextColor: '#f2e6da', lineColor: '#c2a998', fontFamily: 'Nunito, system-ui, sans-serif', fontSize: '15px' }
+        : { background: '#f6efe6', primaryColor: '#fffaf4', primaryBorderColor: '#b4502c', primaryTextColor: '#3b2a21', lineColor: '#7a5f4f', fontFamily: 'Nunito, system-ui, sans-serif', fontSize: '15px' },
     });
     return m;
   });
@@ -918,17 +1041,17 @@ async function renderInbox() {
   app.innerHTML = `
     <section class="inbox">
       <a href="#/" class="back">${icon('back')} All recipes</a>
-      <header class="recipe-cover cloth frame"><h1 class="foil">Add recipes</h1>
+      <header class="page-head"><h1>Add recipes</h1>
         <p class="lede">Recipes are added in Google Drive, not on this site. Anything put in the shared recipe folder appears here within the hour.</p></header>
       <div id="access" class="access"></div>
-      <h2 class="spine-label cloth">How to add one</h2>
+      <h2 class="section-title">How to add one</h2>
       <ol>
         <li>Open the <a href="${folderUrl}" target="_blank" rel="noopener">shared recipe folder in Google Drive</a>.</li>
         <li>Upload a PDF, a photo of a recipe (cookbook page, handwritten card), a Google Doc, a Word file or a text file. Subfolders are fine.</li>
         <li>Want a nice photo of the finished dish? Upload it with the <b>same name</b> as the recipe file, for example <code>Lasagne.pdf</code> and <code>Lasagne.jpg</code>.</li>
         <li>New files are picked up within the hour. To fix a recipe, edit or replace the file; delete it to remove the recipe.</li>
       </ol>
-      <h2 class="spine-label cloth">Processing status</h2>
+      <h2 class="section-title">Processing status</h2>
       <div id="status"><p class="muted">Loading…</p></div>
     </section>`;
   app.onclick = null;
@@ -947,7 +1070,7 @@ async function renderInbox() {
     const el = document.getElementById('status');
     if (!el) return;
     el.innerHTML = rows.length ? `
-      <div class="table-wrap"><table class="status"><thead class="cloth"><tr><th>File</th><th>Status</th><th>Recipes</th></tr></thead><tbody>
+      <div class="table-wrap"><table class="status"><thead><tr><th>File</th><th>Status</th><th>Recipes</th></tr></thead><tbody>
       ${rows.map(([file, status, n, detail]) => `<tr class="${status === 'error' || status.startsWith('unsupported') ? 'bad' : ''}"><td>${esc(file)}${detail ? `<br><small>${esc(detail)}</small>` : ''}</td><td>${esc(status)}</td><td>${esc(n)}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">Nothing processed yet.</p>';
   } catch (e) {
