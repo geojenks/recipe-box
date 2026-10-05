@@ -191,6 +191,9 @@ main:has(> .signin), main:has(> .cook) { max-width: none; padding: 0; }
 .suggest-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .suggest .chip { background: var(--ground); border-color: transparent; }
 .suggest .chip:hover { border-color: var(--rule-strong); }
+.suggest .chip.more { background: transparent; border: 1.5px dashed var(--rule-strong); color: var(--muted); }
+.suggest .chip.more:hover { border-color: var(--ink); color: var(--ink); }
+.suggest .chip.more .i { width: .95rem; height: .95rem; }
 
 /* course swatches: a round of each clay pigment, scrolled sideways */
 .swatches {

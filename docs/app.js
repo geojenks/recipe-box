@@ -18,6 +18,7 @@ const state = {
   recipes: [],
   byId: new Map(),
   ingredients: new Map(), // canonical -> {name, staple, recipeIds:Set}
+  mainCounts: null, // ingredient -> how many recipes it is a main ingredient of
   notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]
   canNote: null,          // can this user write to the notes sheet?
   photos: new Map(),      // fileId -> Promise<objectURL|null>
@@ -226,6 +227,7 @@ function buildIngredientIndex() {
   }
   for (const e of map.values()) e.staple = extra.has(e.name) || e.stapleVotes * 2 > e.uses;
   state.ingredients = map;
+  state.mainCounts = null;
 }
 
 function photoUrl(fileId) {
@@ -390,7 +392,7 @@ function matchingRecipes() {
 }
 
 /** Ingredients that most often appear alongside the selected ones, staples excluded. */
-function coIngredientSuggestions(recipes, limit = 12) {
+function coIngredientSuggestions(recipes, limit) {
   const skip = new Set([...state.search.ingredients, ...state.search.missing]);
   const counts = new Map();
   for (const r of recipes) {
@@ -405,12 +407,29 @@ function coIngredientSuggestions(recipes, limit = 12) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit);
 }
 
-/** The ingredients used in the most recipes, staples excluded: offered when the ingredient box opens. */
-function commonIngredients(limit = 16) {
+/** How many recipes each ingredient is a main ingredient of (the ones shown on the cards). */
+function mainCounts() {
+  if (!state.mainCounts) {
+    state.mainCounts = new Map();
+    for (const r of state.recipes) {
+      for (const k of keyIngredients(r)) state.mainCounts.set(k, (state.mainCounts.get(k) || 0) + 1);
+    }
+  }
+  return state.mainCounts;
+}
+
+/**
+ * Offered when the ingredient box opens: the ingredients that decide what you can
+ * cook, not the pantry things everyone has. Those that are a main ingredient of the
+ * most recipes come first, then the rarer ones.
+ */
+function distinctiveIngredients(limit) {
   const skip = new Set([...state.search.ingredients, ...state.search.missing]);
+  const main = mainCounts();
   return [...state.ingredients.values()]
     .filter((e) => !e.staple && !skip.has(e.name))
-    .sort((a, b) => b.recipeIds.size - a.recipeIds.size || a.name.localeCompare(b.name))
+    .sort((a, b) => (main.get(b.name) || 0) - (main.get(a.name) || 0) ||
+      a.recipeIds.size - b.recipeIds.size || a.name.localeCompare(b.name))
     .slice(0, limit)
     .map((e) => [e.name, e.recipeIds.size]);
 }
@@ -564,6 +583,10 @@ function renderHome() {
   const ing = document.getElementById('ing');
   const suggest = document.getElementById('suggest');
   let open = false; // the ingredient suggestions stay open while you pick, until you tap elsewhere
+  const FIRST_SUGGESTIONS = 16;
+  const MORE_SUGGESTIONS = 15;
+  let suggestLimit = FIRST_SUGGESTIONS;
+  const close = () => { open = false; suggestLimit = FIRST_SUGGESTIONS; update(); };
 
   q.oninput = () => { state.search.text = q.value; update(); };
   const addIngredient = (name) => {
@@ -626,7 +649,7 @@ function renderHome() {
   ing.onchange = () => addIngredient(ing.value);
   ing.onkeydown = (e) => {
     if (e.key === 'Enter') addIngredient(ing.value);
-    if (e.key === 'Escape') { open = false; update(); }
+    if (e.key === 'Escape') close();
   };
   ing.onfocus = () => { if (!open) { open = true; update(); } };
 
@@ -634,7 +657,7 @@ function renderHome() {
   homeCtl = new AbortController();
   document.addEventListener('pointerdown', (e) => {
     if (!app.contains(ing)) { homeCtl.abort(); return; }
-    if (open && !e.target.closest('.finder')) { open = false; update(); }
+    if (open && !e.target.closest('.finder')) close();
   }, { signal: homeCtl.signal });
 
   function update() {
@@ -650,12 +673,17 @@ function renderHome() {
       ...ingredients.map((i) => `<button class="chip have" data-remove="${esc(i)}" aria-label="Remove ${esc(i)}">${icon('check')}${esc(i)} ${icon('close')}</button>`),
       ...missing.map((i) => `<button class="chip lacking" data-unlack="${esc(i)}" aria-label="I do have ${esc(i)} after all">No ${esc(i)} ${icon('close')}</button>`),
     ].join('');
-    const sugg = ingredients.length ? coIngredientSuggestions(list.slice(0, using)) : commonIngredients();
+    // one extra tells us whether there are more to offer
+    const sugg = ingredients.length ? coIngredientSuggestions(list.slice(0, using), suggestLimit + 1)
+      : distinctiveIngredients(suggestLimit + 1);
+    const more = sugg.length > suggestLimit;
+    if (more) sugg.pop();
     suggest.hidden = !open || !sugg.length;
     ing.setAttribute('aria-expanded', !suggest.hidden);
     suggest.innerHTML = sugg.length ? `
       <p class="suggest-head">${ingredients.length ? 'Goes well with' : 'Tap what you have'}</p>
-      <div class="suggest-chips">${sugg.map(([n, c]) => `<button class="chip" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}</div>` : '';
+      <div class="suggest-chips">${sugg.map(([n, c]) => `<button class="chip" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}
+        ${more ? `<button class="chip more" data-more>More ${icon('down')}</button>` : ''}</div>` : '';
     const filtered = state.search.text || ingredients.length || missing.length || state.search.course;
     const shown = filtered ? `${list.length} of ${state.recipes.length} recipes` : `${state.recipes.length} recipes`;
     document.getElementById('count').textContent = !ingredients.length ? shown
@@ -691,6 +719,7 @@ function renderHome() {
     const rm = e.target.closest('[data-remove]');
     const unlack = e.target.closest('[data-unlack]');
     const add = e.target.closest('[data-add]');
+    if (e.target.closest('[data-more]')) { suggestLimit += MORE_SUGGESTIONS; update(); }
     const lack = e.target.closest('[data-lack]');
     const course = e.target.closest('[data-course]');
     if (rm) { state.search.ingredients = state.search.ingredients.filter((i) => i !== rm.dataset.remove); update(); }
