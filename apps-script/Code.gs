@@ -20,6 +20,9 @@ var MAX_ATTEMPTS = 3;
 var PHOTO_SIZE = 1200;
 // Bump when the extraction format changes so existing recipes are processed again.
 var EXTRACT_VERSION = 2;
+// Bump when photo selection changes: photos are redone from the saved
+// extraction, without sending anything to Claude again.
+var PHOTO_VERSION = 3;
 var CONTINUE_HANDLER = 'continueProcessing';
 
 var IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
@@ -112,17 +115,17 @@ function saveIndex_(index) {
 }
 
 /** Hourly trigger entry point. Safe to run by hand from the editor too. */
-function processInbox() {
+async function processInbox() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return; // a previous run is still going
   try {
-    processInboxLocked_();
+    await processInboxLocked_();
   } finally {
     lock.releaseLock();
   }
 }
 
-function processInboxLocked_() {
+async function processInboxLocked_() {
   var started = Date.now();
   var inbox = DriveApp.getFolderById(requireProp_('INBOX_FOLDER_ID'));
   var dataFolderId = requireProp_('DATA_FOLDER_ID');
@@ -140,58 +143,72 @@ function processInboxLocked_() {
   var pending = [];
   var outOfTime = function () { return Date.now() - started > TIME_BUDGET_MS; };
 
-  plan.sources.forEach(function (item) {
-    var file = item.file;
-    var id = file.getId();
+  for (const item of plan.sources) {
+    const file = item.file;
+    const id = file.getId();
     seen[id] = true;
-    var modified = file.getLastUpdated().toISOString();
-    var photo = item.photo;
-    var photoKey = photo ? photo.getId() + '@' + photo.getLastUpdated().toISOString() : null;
-    var entry = index.sources[id];
+    const modified = file.getLastUpdated().toISOString();
+    const photo = item.photo;
+    const photoKey = photo ? photo.getId() + '@' + photo.getLastUpdated().toISOString() : null;
+    const entry = index.sources[id];
 
-    var needsWork = !entry || entry.modified !== modified || entry.photoKey !== photoKey ||
+    const needsWork = !entry || entry.modified !== modified || entry.photoKey !== photoKey ||
       (entry.extractVersion !== EXTRACT_VERSION && entry.status !== 'error') ||
       (entry.status === 'error' && entry.attempts < MAX_ATTEMPTS);
+    const needsPhoto = !needsWork && entry.status === 'ok' && (entry.photoVersion !== PHOTO_VERSION ||
+      (entry.photoRetry && (entry.photoAttempts || 0) < MAX_ATTEMPTS));
     if (entry) entry.name = file.getName();
-    if (!needsWork) return;
+    if (!needsWork && !needsPhoto) continue;
     if (outOfTime()) { // pick it up on the follow-up run
-      pending.push(file.getName());
-      return;
+      if (needsWork) pending.push(file.getName());
+      continue;
     }
 
-    var attempts = entry && entry.modified === modified && entry.status === 'error' ? entry.attempts : 0;
+    if (needsPhoto) {
+      const pdf = inputKind_(file) === 'pdf' ? pdfBlobFor_(file) : null;
+      const recipes = index.recipes.filter(function (r) { return r.sourceFileId === id; });
+      const result = await attachPhotos_(file, photo, id, recipes, pdf);
+      entry.photoVersion = PHOTO_VERSION;
+      entry.photoRetry = result.incomplete;
+      entry.photoAttempts = result.incomplete ? (entry.photoAttempts || 0) + 1 : 0;
+      changed = true;
+      saveIndex_(index);
+      continue;
+    }
+
+    const attempts = entry && entry.modified === modified && entry.status === 'error' ? entry.attempts : 0;
     try {
-      var pdf = inputKind_(file) === 'pdf' ? pdfBlobFor_(file) : null;
-      var recipes = extractRecipes_(file, pdf);
+      const pdf = inputKind_(file) === 'pdf' ? pdfBlobFor_(file) : null;
+      const recipes = extractRecipes_(file, pdf);
       removeRecipesForSource_(index, id);
-      if (entry) trashQuietly_(entry.photoFileId);
-      var photoFileId = attachPhotos_(file, photo, id, recipes, pdf);
+      const photos = await attachPhotos_(file, photo, id, recipes, pdf);
       recipes.forEach(function (r, i) {
         index.recipes.push(decorateRecipe_(r, i, file));
       });
       index.sources[id] = {
-        name: file.getName(), modified: modified, photoKey: photoKey, extractVersion: EXTRACT_VERSION,
+        name: file.getName(), modified: modified, photoKey: photoKey,
+        extractVersion: EXTRACT_VERSION, photoVersion: PHOTO_VERSION,
+        photoRetry: photos.incomplete, photoAttempts: photos.incomplete ? 1 : 0,
         status: recipes.length ? 'ok' : 'no recipe found',
-        recipes: recipes.length, attempts: 0, error: null, photoFileId: photoFileId
+        recipes: recipes.length, attempts: 0, error: null
       };
     } catch (e) {
       index.sources[id] = {
         name: file.getName(), modified: modified, photoKey: photoKey, extractVersion: EXTRACT_VERSION,
         status: 'error', recipes: entry ? entry.recipes : 0,
-        attempts: attempts + 1, error: String(e.message || e),
-        photoFileId: entry ? entry.photoFileId : null
+        attempts: attempts + 1, error: String(e.message || e)
       };
       Logger.log('Failed on ' + file.getName() + ': ' + e);
     }
     changed = true;
     saveIndex_(index); // save after each file so a timeout loses nothing
-  });
+  }
 
   // Files removed from the inbox: drop their recipes and generated photos.
   Object.keys(index.sources).forEach(function (id) {
     if (seen[id]) return;
     removeRecipesForSource_(index, id);
-    trashQuietly_(index.sources[id].photoFileId);
+    trashPhotosFor_(id);
     delete index.sources[id];
     changed = true;
   });
@@ -209,8 +226,8 @@ function scheduleContinuation_(needed) {
   if (needed) ScriptApp.newTrigger(CONTINUE_HANDLER).timeBased().after(60 * 1000).create();
 }
 
-function continueProcessing() {
-  processInbox();
+async function continueProcessing() {
+  await processInbox();
 }
 
 function collectFiles_(folder, dataFolderId, out) {
@@ -326,60 +343,119 @@ function removeRecipesForSource_(index, sourceId) {
 }
 
 /**
- * Saves one picture per source file into the data folder and sets on each recipe:
+ * Saves the pictures for one source file into the data folder and sets on each recipe:
  *   photoFileId
  *   photoKind  'dish' (a photo of the food) or 'page' (a picture of the recipe itself)
  *   photoCrop  {left, top, width, height} as page fractions when the dish photo has to be
- *              cut out of the page picture (the website does the cutting), else null
- * Preference: uploaded photo with the same name > JPEG embedded in the PDF > crop of page 1.
- * Returns the saved file's id.
+ *              cut out of a page picture (the website does the cutting), else null
+ * Preference: uploaded photo with the same name > JPEG embedded in the PDF > crop of the
+ * page Claude found the photo on. Returns {incomplete: true} if a page picture wasn't
+ * ready yet, so the next run tries again.
  */
-function attachPhotos_(file, uploaded, sourceId, recipes, pdf) {
+async function attachPhotos_(file, uploaded, sourceId, recipes, pdf) {
   var dataFolder = DriveApp.getFolderById(requireProp_('DATA_FOLDER_ID'));
-  var name = 'photo-' + sourceId + '.jpg';
-  var existing = dataFolder.getFilesByName(name);
-  while (existing.hasNext()) existing.next().setTrashed(true);
-  var save = function (blob) { return dataFolder.createFile(blob.setName(name)).getId(); };
+  trashPhotosFor_(sourceId);
+  var save = function (blob, suffix) {
+    return dataFolder.createFile(blob.setName('photo-' + sourceId + suffix + '.jpg')).getId();
+  };
   var setAll = function (id, kind) {
     recipes.forEach(function (r) { r.photoFileId = id; r.photoKind = kind; r.photoCrop = null; });
-    return id;
   };
 
   try {
-    if (uploaded) return setAll(save(driveThumbnail_(uploaded, PHOTO_SIZE)), 'dish');
-
-    var wantsPhoto = recipes.some(function (r) { return r.dishPhoto; });
-    if (pdf && wantsPhoto && recipes.length === 1) {
+    if (uploaded) {
+      setAll(save(driveThumbnail_(uploaded, PHOTO_SIZE), ''), 'dish');
+      return { incomplete: false };
+    }
+    if (pdf && recipes.length === 1 && recipes[0].dishPhoto) {
       var embedded = embeddedDishPhoto_(pdf);
-      if (embedded) return setAll(save(embedded), 'dish');
+      if (embedded) {
+        setAll(save(embedded, ''), 'dish');
+        return { incomplete: false };
+      }
     }
 
     var crops = recipes.map(function (r) { return cleanCrop_(r.dishPhoto); });
-    var anyCrop = crops.some(function (c) { return c; });
-    var id = save(driveThumbnail_(file, anyCrop ? 2400 : PHOTO_SIZE));
-    recipes.forEach(function (r, i) {
-      r.photoFileId = id;
-      r.photoKind = crops[i] ? 'dish' : 'page';
-      r.photoCrop = crops[i];
-    });
-    return id;
+    var page1Crop = crops.some(function (c) { return c && c.page === 1; });
+    var pictures = {};
+    var incomplete = false;
+    var pictureOf = async function (page) {
+      if (!(page in pictures)) {
+        var id = null;
+        if (page === 1) {
+          id = save(driveThumbnail_(file, page1Crop ? 2400 : PHOTO_SIZE), '-p1');
+        } else if (pdf) {
+          var rendered = await renderPdfPage_(pdf, page, dataFolder);
+          if (rendered.blob) id = save(rendered.blob, '-p' + page);
+          else if (!rendered.missing) incomplete = true;
+        }
+        pictures[page] = id;
+      }
+      return pictures[page];
+    };
+
+    for (let i = 0; i < recipes.length; i++) {
+      const r = recipes[i];
+      const crop = crops[i];
+      const id = crop ? await pictureOf(crop.page) : null;
+      if (id) {
+        r.photoFileId = id;
+        r.photoKind = 'dish';
+        r.photoCrop = crop.box;
+      } else {
+        r.photoFileId = await pictureOf(1);
+        r.photoKind = 'page';
+        r.photoCrop = null;
+      }
+    }
+    return { incomplete: incomplete };
   } catch (e) {
     Logger.log('No photo for ' + file.getName() + ': ' + e);
     setAll(null, null);
-    return null;
+    return { incomplete: true };
   }
 }
 
-/** Only page 1 can be rendered, so only boxes on page 1 that look like a real photo are usable. */
+/** Claude's photo box, clamped to the page; null if it's too small to be a real photo. */
 function cleanCrop_(box) {
-  if (!box || box.page !== 1) return null;
+  if (!box || !(box.page >= 1)) return null;
   var clamp = function (v) { return Math.min(1, Math.max(0, v)); };
   var left = clamp(box.left), top = clamp(box.top);
-  var width = clamp(box.width), height = clamp(box.height);
-  width = Math.min(width, 1 - left);
-  height = Math.min(height, 1 - top);
+  var width = Math.min(clamp(box.width), 1 - left);
+  var height = Math.min(clamp(box.height), 1 - top);
   if (width < 0.1 || height < 0.05) return null;
-  return { left: left, top: top, width: width, height: height };
+  return { page: box.page, box: { left: left, top: top, width: width, height: height } };
+}
+
+/**
+ * Pictures page N of a PDF: copies that page into a temporary one-page PDF and
+ * waits for Drive to render it. Returns {blob}, {missing: true} if the PDF has no
+ * such page, or {} if Drive hasn't rendered it yet.
+ */
+async function renderPdfPage_(pdf, page, dataFolder) {
+  var single = await extractPdfPage_(pdf.getBytes(), page, function () {
+    return UrlFetchApp.fetch(PDF_LIB_URL).getContentText();
+  });
+  if (!single) return { missing: true };
+  var bytes = Array.from(new Int8Array(single.buffer, single.byteOffset, single.length));
+  var tmp = dataFolder.createFile(Utilities.newBlob(bytes, 'application/pdf', 'tmp-page.pdf'));
+  try {
+    for (var i = 0; i < 8; i++) {
+      var link = thumbnailLink_(tmp.getId());
+      if (link) return { blob: fetchThumbnail_(link, 2400) };
+      Utilities.sleep(4000);
+    }
+    Logger.log('Drive had not rendered page ' + page + ' yet; will retry next run');
+    return {};
+  } finally {
+    trashQuietly_(tmp.getId());
+  }
+}
+
+function trashPhotosFor_(sourceId) {
+  var dataFolder = DriveApp.getFolderById(requireProp_('DATA_FOLDER_ID'));
+  var it = dataFolder.searchFiles("title contains 'photo-" + sourceId + "' and trashed = false");
+  while (it.hasNext()) it.next().setTrashed(true);
 }
 
 function embeddedDishPhoto_(pdf) {
@@ -396,19 +472,25 @@ function embeddedDishPhoto_(pdf) {
   }
 }
 
+function thumbnailLink_(fileId) {
+  var meta = UrlFetchApp.fetch(
+    'https://www.googleapis.com/drive/v3/files/' + fileId + '?fields=thumbnailLink',
+    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } }
+  );
+  return JSON.parse(meta.getContentText()).thumbnailLink || null;
+}
+
+function fetchThumbnail_(link, size) {
+  var sized = link.replace(/=s\d+$/, '=s' + size);
+  return UrlFetchApp.fetch(sized, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } })
+    .getBlob().getAs('image/jpeg');
+}
+
 function driveThumbnail_(file, size) {
   // Drive's thumbnailLink can be requested at any size; getThumbnail() is a small fallback.
   try {
-    var token = ScriptApp.getOAuthToken();
-    var meta = UrlFetchApp.fetch(
-      'https://www.googleapis.com/drive/v3/files/' + file.getId() + '?fields=thumbnailLink',
-      { headers: { Authorization: 'Bearer ' + token } }
-    );
-    var link = JSON.parse(meta.getContentText()).thumbnailLink;
-    if (link) {
-      var sized = link.replace(/=s\d+$/, '=s' + size);
-      return UrlFetchApp.fetch(sized, { headers: { Authorization: 'Bearer ' + token } }).getBlob().getAs('image/jpeg');
-    }
+    var link = thumbnailLink_(file.getId());
+    if (link) return fetchThumbnail_(link, size);
   } catch (e) {
     Logger.log('thumbnailLink failed for ' + file.getName() + ': ' + e);
   }
