@@ -1,304 +1,241 @@
 ---
 name: Recipe book
-description: A well-used clothbound cookbook for a small group's own recipes, built for cooking from a phone.
+description: A clean, rounded recipe book in Moroccan clay colours, built for choosing and cooking from a phone.
 colors:
-  cloth: "#1f3a2b"
-  cloth-navy: "#1d2b48"
-  cloth-teal: "#17434a"
-  cloth-plum: "#3f2345"
-  cloth-tobacco: "#46301f"
-  cloth-olive: "#3a3d1c"
-  foil: "#e0bf55"
-  on-cloth: "#eef0e6"
-  on-cloth-soft: "#c9cfbf"
-  ribbon: "#8a2232"
-  ribbon-deep: "#6e1a27"
-  on-ribbon: "#ffffff"
-  page: "#f6f7f3"
-  leaf: "#ffffff"
-  ink: "#17211b"
-  muted: "#55604f"
-  rule: "#d6dbcf"
-  rule-strong: "#b9c1b0"
-  endpaper: "#dce4d2"
-  endpaper-ink: "#1f3a2b"
-  error: "#9b1c1c"
+  sand-ground: "#f6efe6"
+  sand-surface: "#fffaf4"
+  clay-ink: "#3b2a21"
+  clay-muted: "#74594a"
+  sand-rule: "#e8d9c8"
+  sand-rule-strong: "#cfb59d"
+  pattern-ground: "#efd9c3"
+  terracotta-accent: "#b4502c"
+  terracotta-deep: "#963f20"
+  on-accent: "#ffffff"
+  majorelle-link: "#2f4fa3"
+  have-green: "#3f6b4e"
+  error-red: "#a3261b"
+  pigment-terracotta: "#b8532f"
+  pigment-ochre: "#d49a37"
+  pigment-mint: "#7ea488"
+  pigment-rose-clay: "#d6a196"
+  pigment-majorelle: "#2f4fa3"
+  pigment-olive: "#8c8a4a"
 typography:
+  wordmark:
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "clamp(2.6rem, 12vw, 3.4rem)"
+    fontWeight: 900
+    lineHeight: 1
+    letterSpacing: "-0.03em"
   display:
-    fontFamily: "Young Serif, Iowan Old Style, Palatino Linotype, serif"
-    fontSize: "clamp(2rem, 7vw, 3.1rem)"
-    fontWeight: 400
-    lineHeight: 1.08
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "clamp(2rem, 7.5vw, 3.2rem)"
+    fontWeight: 900
+    lineHeight: 1.05
+    letterSpacing: "-0.025em"
   headline:
-    fontFamily: "Young Serif, Iowan Old Style, Palatino Linotype, serif"
-    fontSize: "1.5rem"
-    fontWeight: 400
-    lineHeight: 1
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "1.35rem"
+    fontWeight: 850
+    lineHeight: 1.15
+    letterSpacing: "-0.015em"
   title:
-    fontFamily: "Young Serif, Iowan Old Style, Palatino Linotype, serif"
-    fontSize: "1.15rem"
-    fontWeight: 400
-    lineHeight: 1
-  cook:
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, sans-serif"
-    fontSize: "clamp(1.8rem, 7.8vw, 3rem)"
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "1.02rem"
+    fontWeight: 850
+    lineHeight: 1.25
+  body:
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "16px"
     fontWeight: 500
+    lineHeight: 1.55
+  label:
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "0.84rem"
+    fontWeight: 800
+    lineHeight: 1.4
+  cook:
+    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "clamp(1.8rem, 7.8vw, 3rem)"
+    fontWeight: 700
     lineHeight: 1.22
     letterSpacing: "-0.01em"
-  body:
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, sans-serif"
-    fontSize: "16px"
-    fontWeight: 400
-    lineHeight: 1.55
-    fontFeature: "tnum"
-  body-strong:
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 650
-    lineHeight: 1.3
-  label:
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, sans-serif"
-    fontSize: "0.74rem"
-    fontWeight: 400
-    lineHeight: 1.4
-    letterSpacing: "0.06em"
 rounded:
-  working: "2px"
-  spine-small: "1px 3px 3px 1px"
-  spine-card: "2px 5px 5px 2px"
-  spine-cover: "2px 6px 6px 2px"
-  spine-book: "3px 8px 8px 3px"
-  tab: "6px 6px 0 0"
-  tab-side: "0 6px 6px 0"
+  sm: "6px"
+  md: "16px"
+  card: "18px"
+  panel: "24px"
+  cover: "26px"
+  pill: "999px"
 spacing:
-  gutter: "16px"
-  tab-gap: "4px"
-  section: "2.2rem"
-  grid-gap: "1.6rem 1.2rem"
-  grid-gap-phone: "1.2rem 0.8rem"
+  xs: "6px"
+  sm: "10px"
+  md: "16px"
+  lg: "1.8rem"
 components:
-  ribbon:
-    backgroundColor: "{colors.ribbon}"
-    textColor: "{colors.on-ribbon}"
-    padding: "0.7rem 2.1rem 0.7rem 1.1rem"
+  button-primary:
+    backgroundColor: "{colors.terracotta-accent}"
+    textColor: "{colors.on-accent}"
+    rounded: "{rounded.pill}"
+    padding: ".6rem 1.25rem"
+    height: "46px"
+  button-primary-hover:
+    backgroundColor: "{colors.terracotta-deep}"
+  button-secondary:
+    backgroundColor: "{colors.sand-surface}"
+    textColor: "{colors.clay-ink}"
+    rounded: "{rounded.pill}"
+    padding: ".6rem 1.25rem"
+    height: "46px"
+  chip:
+    backgroundColor: "{colors.sand-surface}"
+    textColor: "{colors.clay-ink}"
+    rounded: "{rounded.pill}"
+    padding: ".2rem .8rem"
+    height: "36px"
+  key-ingredient:
+    backgroundColor: "{colors.sand-surface}"
+    textColor: "{colors.clay-ink}"
+    rounded: "{rounded.pill}"
+    padding: ".15rem .6rem .15rem .45rem"
+    height: "32px"
+  search-field:
+    backgroundColor: "{colors.sand-surface}"
+    textColor: "{colors.clay-ink}"
+    rounded: "{rounded.md}"
     height: "48px"
-  button-cloth:
-    backgroundColor: "{colors.cloth}"
-    textColor: "{colors.on-cloth}"
-    rounded: "{rounded.working}"
-    padding: "0.6rem 1.2rem"
-    height: "44px"
-  button-plate:
-    backgroundColor: "{colors.leaf}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.working}"
-    padding: "0.8rem 1.4rem"
-    height: "48px"
+  recipe-thumb:
+    rounded: "{rounded.card}"
   cook-next:
-    backgroundColor: "{colors.ribbon}"
-    textColor: "{colors.on-ribbon}"
-    rounded: "{rounded.working}"
+    backgroundColor: "{colors.terracotta-accent}"
+    textColor: "{colors.on-accent}"
+    rounded: "{rounded.pill}"
     height: "64px"
-  cook-next-hover:
-    backgroundColor: "{colors.ribbon-deep}"
-  cook-prev:
-    backgroundColor: "{colors.page}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.working}"
-    height: "64px"
-  label-chip:
-    backgroundColor: "{colors.page}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.working}"
-    padding: "0.25em 0.7em"
-    height: "34px"
-  label-chip-on:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.page}"
-  tab:
-    backgroundColor: "{colors.cloth}"
-    textColor: "{colors.on-cloth-soft}"
-    rounded: "{rounded.tab}"
-    padding: "0.45rem 1.6rem 0.4rem 1rem"
-    height: "40px"
-  tab-on:
-    textColor: "{colors.on-cloth}"
-  input:
-    backgroundColor: "{colors.page}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.working}"
-    padding: "0.55em 0.75em"
-    height: "44px"
-  spine-label:
-    backgroundColor: "{colors.cloth}"
-    textColor: "{colors.on-cloth}"
-    typography: "{typography.title}"
-    rounded: "{rounded.spine-small}"
-    padding: "0.5rem 0.9rem 0.45rem"
-  slip:
-    backgroundColor: "{colors.leaf}"
-    textColor: "{colors.ink}"
-    padding: "0.9rem 1.1rem"
 ---
 
 # Design System: Recipe book
 
 ## Overview
 
-**Creative North Star: "The well-used clothbound cookbook"**
+**Creative North Star: "The Clay Kitchen Shelf"**
 
-Every screen is part of one cloth-bound book. Saturated bookcloth with a fine woven texture frames the screen: the top bar is the spine, each recipe has a cover, and section names are small cloth spine labels. Names are stamped on the cloth in Young Serif, in gold foil when they are large enough and blind-stamped (pale, no gold) when they are not. The pages between the covers are a cool near-white with green-black ink, set entirely in the system sans with tabular figures. A printed two-colour endpaper sits behind the search box, and thumb-index tabs, one cloth per course, file the collection.
+A clean, soft, rounded book in the colours of Moroccan clay: a sand ground, terracotta for the one accent, and six clay pigments (ochre, mint, rose clay, majorelle blue, olive, terracotta) that colour the courses. Nunito is the only typeface, heavy (850 to 900) for names and calm (500 to 650) for reading. Photos are shown plainly, with rounded corners and nothing else around them. Courses are filtered by round pigment swatches that scroll sideways, and recipes sit in a two-column grid on a phone.
 
-One oxblood silk ribbon marks where you are. It hangs from the tab you are on, sits in the page at the step you reached, is the button that starts or resumes cooking, slides down the right edge of cooking mode, and is the Next button there. Cooking mode itself drops the book furniture down to a cloth bar and puts one step on the page at poster size, readable at arm's length.
+The diamond-and-dot pattern stays, but in one place: behind the search panel (and the sign-in screen and the Add recipes header). Recipes without a photo wear the same pattern as a tile in their course pigment. Everything else is flat sand, with soft rounded shapes and a single soft shadow for things that lift.
 
-The system rejects the cream-page, serif-everywhere recipe blog and the white photo-grid recipe site. Photos are never tinted or cropped into tiles: they are tipped-in plates in a thin white mount.
+Confirmed rejections: the clothbound look, heavy materials, gold foil, literary serif wordmarks, book-style photo frames.
 
 **Key Characteristics:**
-- Bookcloth (woven texture over a saturated field) frames every screen; course cloths colour each recipe.
-- Young Serif appears only on cloth; everything on the page is system sans with tabular figures.
-- Gold foil only at 24px and up; smaller stamped text is pale.
-- The oxblood ribbon means "you are here" and nothing else of substance.
-- Done things are struck through with a solid ink bar, never greyed out.
-- Photos are plates pasted in whole, with a white mount and a lift shadow.
+- One typeface, Nunito, in light and dark modes alike.
+- Lowercase wordmark "recipe book." in 900 weight with a terracotta full stop.
+- Six course pigments; a recipe keeps one pigment across card, intro panel, step numbers and cooking bar.
+- Everything interactive is a pill or a rounded rectangle; ticks and crosses mark ingredient state.
+- Dark mode is a warm brown-black with lifted pigments, not an inversion.
 
 ## Colors
 
-Deep, saturated bookcloths and a single oxblood ribbon over a cool near-white page with green-black ink.
+Warm sand and clay neutrals, one terracotta accent, six pigments used as course identity.
 
 ### Primary
-- **Bottle green bookcloth** (cloth): the lead cloth. Top bar, cooking-mode bar on the default course, the "All" tab, the cloth button, spine labels on pages without a course, the 3px cloth edge under the tab rows and along the desktop index, the drawer's top edge, the status table head. Also the browser theme colour.
-- **Gold foil** (foil): stamped names on cloth at 24px and up only: the "Recipe book" brand, cover titles on the recipe page and sign-in, and card titles on photo-less covers once the card is 230px wide or more. Hover colour for links on cloth.
+- **Terracotta** (`terracotta-accent`, dark #e0784f): primary buttons, the wordmark full stop, caret, selection, input focus border, the cooking-mode rail mark and Next button, dashed "lacking" outlines.
+- **Deep Terracotta** (`terracotta-deep`, dark #ea8c66): hover of primary, and the "Needs ..." line on a card.
 
-### Secondary
-- **Course cloths**: navy (cloth-navy), teal (cloth-teal), plum (cloth-plum), tobacco (cloth-tobacco) and olive (cloth-olive). Each course is bound in one of these, by a fixed course map (mains and dinners navy; lunches, starters, soups and drinks teal; desserts and preserves plum; baking, bread, cakes and breakfasts tobacco; sides, salads, sauces and snacks olive), with unknown courses hashed onto one of the five. A recipe's cloth carries through its card, cover, spine labels, step numbers, method tabs and cooking-mode bar. The direction listed oxblood among the course cloths; the build keeps oxblood for the ribbon only, and the build wins.
-
-### Tertiary
-- **Oxblood ribbon** (ribbon), deepening to **ribbon-deep** on hover, with white text (on-ribbon). See the Ribbon Rule.
+### Secondary (course pigments)
+- **Terracotta, Ochre, Mint, Rose Clay, Majorelle Blue, Olive** (`pigment-*`, dark variants #d36a43, #dca64a, #8fb79a, #dcab9f, #6f8ad6, #aaa765): one per course, assigned in app.js (main/dinner terracotta; baking/breakfast/brunch ochre; side/salad/vegetable mint; dessert/pudding rose clay; lunch/starter/soup/drink majorelle; sauce/snack/preserve olive; unknown courses by hash). Used as swatch discs, photo-less tiles, a 22% tint of the surface (`pg-soft`) behind the recipe intro, cooking bar and step numbers, and the section-title dot.
 
 ### Neutral
-- **On-cloth** (on-cloth): text and icons on cloth: nav links, byline links, active tab labels, spine labels, step numbers, the cooking-mode bar title, the times and servings figures.
-- **On-cloth soft** (on-cloth-soft): secondary text on cloth: inactive tab labels, the byline, the fact labels, the "est." mark, and blind-stamped card titles under 230px.
-- **Page** (page): the cool near-white ground; also the fill of inputs, chips and the cooking-mode Back button.
-- **Leaf** (leaf): white surfaces lifted from the page: the bookplate, slips, the cooking-mode nav bar and drawer, photo mounts, the status table.
-- **Ink** (ink): green-black body text; fill of ticked boxes and selected chips; the strike-through bar.
-- **Muted** (muted): metadata, field labels, counts, step times, ingredient group names.
-- **Rule / rule strong** (rule, rule-strong): hairlines between list rows (rule); input, chip, tick-box and plate outlines and the cooking-mode rail (rule-strong).
-- **Endpaper / endpaper ink** (endpaper, endpaper-ink): the printed endpaper behind the search box, a 32px diamond-and-dot repeat in endpaper ink at half opacity. Endpaper also backs inline code.
-- **Error** (error): failed processing status and form errors on the page.
-
-**Dark mode** (prefers-color-scheme: dark) re-inks the page, not the cloth: cloth #1d3628, page #121813, leaf #1a221c, ink #e8ebe2, muted #a2ac9c, rule #2b352e, rule strong #3d4a40, ribbon #a8344a, ribbon deep #8a2232, endpaper #18211b, endpaper ink #6f9a7e, error #ff9a9a. Foil, on-cloth, on-cloth soft and the five course cloths are the same in both themes.
+- **Sand Ground** (#f6efe6, dark #1e1612): page. **Sand Surface** (#fffaf4, dark #2a201a): fields, chips, slips, nav bar.
+- **Clay Ink** (#3b2a21, dark #f2e6da): text, ticked boxes, active states. **Clay Muted** (#74594a, dark #c2a998): secondary text.
+- **Sand Rule** (#e8d9c8) and **Sand Rule Strong** (#cfb59d): hairlines and control borders. **Pattern Ground** (#efd9c3, dark #33251d): behind the diamond pattern.
+- **Majorelle** (`majorelle-link`, dark link #a9bbf0, focus #8ea6ea): links and focus rings. **Have Green** (#3f6b4e) the tick on a key ingredient. **Error Red** (#a3261b).
 
 ### Named Rules
-**The Ribbon Rule.** Oxblood marks where you are and where your focus is. It appears as the bookmark hanging from the active tab (course index and Steps/Flowchart alike), the ribbon left at the current step, the Start cooking / Carry on cooking ribbon, the cooking-mode rail mark and the Next button; and, as the focus and pointer colour, the focus ring, text caret, selection, link hover underline and the keep-awake checkbox. It is never a course cloth, a heading colour or decoration.
-
-**The Cloth Carries the Course Rule.** A recipe takes one cloth from the course map and uses it everywhere that recipe is bound: card, cover, spine labels, step numbers, method tabs, cooking-mode bar. Never mix two course cloths in one recipe.
+**The Pigment Per Course Rule.** A recipe takes one pigment from its course and carries it through its card tile, intro panel, step numbers, section dots and cooking bar. Never mix two.
+**The One Accent Rule.** Terracotta is the action and focus colour. A course pigment is identity, never a button.
 
 ## Typography
 
-**Display Font:** Young Serif (with Iowan Old Style, Palatino Linotype, serif), loaded from the Google Fonts CDN.
-**Body Font:** the system sans (system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, sans-serif) with tabular figures throughout.
+**Display, Body and Label Font:** Nunito (Google Fonts, 400 to 900, with system-ui fallback). Nunito is the only typeface; nothing is set in a serif or a second family.
 
-**Character:** Young Serif is the foil stamp: soft, heavy, bookish, used only on cloth. The system sans does all the reading and operating, so recipes read like a clean printed page and the numbers line up.
+**Character:** Round, friendly and sturdy. Weight does the hierarchy work. Tabular figures throughout, so times and quantities line up.
 
 ### Hierarchy
-- **Display** (Young Serif 400, clamp(2rem, 7vw, 3.1rem), 1.08): recipe and Add recipes cover titles, in foil. The sign-in cover title runs larger, clamp(2.6rem, 11vw, 3.6rem) at line height 1.
-- **Headline** (Young Serif 400, 1.5rem, 1): the "Recipe book" brand in foil; card titles stamped on photo-less covers at 230px and wider, in foil.
-- **Title** (Young Serif 400, 1.1 to 1.15rem): spine labels (1.15rem) and the Steps/Flowchart tabs (1.1rem), in on-cloth colours; the cooking-mode bar title (1.1rem) and step numbers (1rem), also on-cloth. Blind-stamped card titles below 230px use clamp(1rem, 9.5cqi, 1.4rem) in on-cloth soft.
-- **Cook** (system sans 500, poster size, letter-spacing -0.01em): the single step in cooking mode, in three sizes by step length. Steps over 140 characters use the base size clamp(1.8rem, 7.8vw, 3rem) at 1.22; steps of 71 to 140 characters use clamp(2.1rem, 9.2vw, 3.5rem) at 1.16; steps of 70 characters or fewer use clamp(2.5rem, 11vw, 4.2rem) at 1.12. The "Step 1 of 5" line sits above at 1.25rem/750 and 1rem/600 muted.
-- **Body** (system sans 400, 16px, 1.55, tabular figures): ingredients, steps, tips and notes, held to 60 to 70ch.
-- **Body strong** (system sans 650, 1rem, 1.3): card titles under the cover, buttons, ingredient quantities. Fact figures on the cover are 1.12rem/650.
-- **Label** (system sans, 0.74rem, letter-spacing 0.06em, uppercase): the Prep / Cook / Total / Serves labels and status table headings. Ingredient group names use 0.78rem/700 uppercase muted; field labels use 0.78rem/650 muted, sentence case.
+- **Wordmark** (900, clamp(2.6rem, 12vw, 3.4rem) on sign-in, 1.45rem in the top bar, -0.03em, lowercase): "recipe book." with a terracotta full stop.
+- **Display** (900, clamp(2rem, 7.5vw, 3.2rem), 1.05): recipe title, Add recipes heading.
+- **Headline** (850, 1.35rem): section titles, led by a small pigment dot.
+- **Title** (850, 1.02rem, 1.25): card titles.
+- **Body** (500, 16px, 1.55; text blocks 60 to 70ch): reading text.
+- **Label** (750 to 850, .8 to .9rem, sentence case): meta lines, fact labels, chips, keys, swatch names.
+- **Cook** (700, clamp(1.8rem, 7.8vw, 3rem); `mid` for 71 to 140 characters clamp(2.1rem, 9.2vw, 3.5rem); `short` for 70 or fewer clamp(2.5rem, 11vw, 4.2rem)): one step per screen, readable at arm's length.
 
 ### Named Rules
-**The Stamped-on-Cloth Rule.** Young Serif appears only on cloth. Headings on the page ground, the cooking-mode step, the drawer heading and the end-of-recipe heading are system sans at 500 to 750.
-
-**The Foil Floor Rule.** Gold foil only at 24px and up. Smaller stamped text on cloth is on-cloth or on-cloth soft: spine labels, tabs, step numbers, the cooking-mode bar title and the "est." mark are never gold. Card titles switch from blind stamp to foil through a container query at 230px card width.
+**The One Face Rule.** Nunito only, in every mode and on every surface.
+**The Lowercase Wordmark Rule.** The name is lowercase with a terracotta dot; everything else is sentence case.
 
 ## Layout
 
-A single centred column up to 1180px with a 16px gutter (respecting the safe area), the top bar sticky above it. Home is a full-bleed endpaper band holding the bookplate (search and ingredient fields, max 760px, two columns from 700px), then the thumb index, then the shelf of covers.
-
-The shelf is an auto-fill grid of covers at least 210px wide (gaps 1.6rem by 1.2rem); at 520px and below it is fixed at two columns (gaps 1.2rem by 0.8rem). Covers are 4:3.3.
-
-The thumb index is a horizontal, scrollable strip of tabs with a 4px gap sitting on a 3px cloth edge; inactive tabs drop 6px, so the active tab stands proud. From 1000px it moves to the right of the shelf as a sticky vertical index (top 76px) hanging from a 3px cloth edge, tabs at least 7.5rem wide, with no stagger.
-
-The recipe page puts the cover first; from 900px a dish plate sits beside it (1.35fr to 1fr). From 860px ingredients become a sticky left column (minimum 250px, 1fr) beside the method (1.9fr) with a 3rem gap. Sections start with a spine label 2.2rem below the previous section.
-
-Cooking mode is a full-screen three-row grid: the cloth bar (56px minimum), one step per page (max 42rem, padded clamp(1.2rem, 5vw, 3rem) with room on the right for the ribbon rail), and a two-button nav bar (Back 1fr, Next 1.6fr) that respects the bottom safe area. Ingredients open as a drawer from the bottom, up to 75% high.
+Single column on a phone with 16px side padding; `main` is capped at 1180px. Home runs top to bottom: a sticky 56px top bar, the search panel (max 780px, two columns from 700px), the swatch row, a result count, then the recipe grid. The grid is `auto-fill` at 220px minimum and two columns up to 520px wide, with 1.4 to 1.8rem row gaps. The swatch row scrolls sideways with proximity snapping and centres from 812px. The recipe page stacks intro then photo, goes side by side from 900px when a dish photo exists, and puts ingredients in a sticky left column with steps on the right from 860px. Cooking mode is a full-screen fixed grid: bar, step page, nav bar, with step content max 42rem. Rhythm is small even steps (6, 10, 14, 16px) inside controls and 1.2 to 2.4rem between sections.
 
 ## Elevation & Depth
 
-The book is physical, so objects lift off the page with one soft house shadow, the lift: bookplate, covers, recipe cover, plate photos, the cloth button, the flowchart detail panel and the status table. Within cloth, depth is pressed in rather than raised: a blind-stamped inset frame, an inset fold at the foot of inactive tabs, and a darkened spine edge on the left of each card cover. Slips sit lower than lifted objects, with a lighter shadow. Hover raises a card cover by 3px with a deeper shadow.
+Mostly flat tonal layering: sand ground, lighter surface for fields and slips, hairline rules. One soft shadow vocabulary for things that lift or float.
 
 ### Shadow Vocabulary
-- **Lift** (`box-shadow: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22)`; dark: `0 1px 2px rgb(0 0 0 / .4), 0 8px 20px -8px rgb(0 0 0 / .6)`): anything bound or pasted that sits on the page.
-- **Cover hover** (`box-shadow: 0 2px 3px rgb(23 33 27 / .16), 0 14px 26px -10px rgb(23 33 27 / .35)`): a card cover lifted on hover, with a 3px rise.
-- **Slip** (`box-shadow: 0 1px 1px rgb(23 33 27 / .08), 0 3px 10px -4px rgb(23 33 27 / .18)`): tipped-in tips and notes.
-- **Mounted photo** (`box-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 4px 10px -2px rgb(0 0 0 / .45)`): a photo pasted onto a cover.
-- **Tab fold** (`box-shadow: inset 0 -10px 10px -8px rgb(0 0 0 / .45)`; desktop `inset 10px 0 10px -8px`): inactive tabs tucked behind the page edge.
-- **Drawer** (`box-shadow: 0 -12px 30px -12px rgb(0 0 0 / .35)`): the ingredients drawer in cooking mode.
+- **Lift** (`0 1px 2px rgb(59 42 33 / .08), 0 8px 22px -10px rgb(59 42 33 / .3)`; dark `0 1px 2px rgb(0 0 0 / .4), 0 10px 24px -10px rgb(0 0 0 / .7)`): card photo on hover (also rises 3px), suggestion panel, toast, sign-in card, flow detail.
+- **Field** (`0 1px 2px rgb(59 42 33 / .08)`): search inputs on the pattern.
+- **Drawer** (`0 -12px 30px -12px rgb(0 0 0 / .35)`): cooking-mode ingredients drawer.
 
 ### Named Rules
-**The Pressed, Not Raised, Rule.** Detail inside cloth is pressed in (frames, folds, spine edge); only whole objects lift off the page.
+**The Flat At Rest Rule.** Cards and photos carry no shadow until hovered.
 
 ## Shapes
 
-Nearly square. The working radius is 2px on inputs, buttons, chips, tick boxes and tags. Bound objects have a spine: a tighter radius on the left than on the right (cards 2px/5px, recipe cover 2px/6px, sign-in cover 3px/8px, spine labels and step numbers 1px/3px). Tabs are rounded only on the edge that sticks out (6px top corners; 6px right corners on the desktop index). The ribbon has a swallowtail cut: the Start cooking ribbon notches 14px into its right end, and the bookmarks on tabs and steps and the cooking-mode rail mark notch into their lower end. The only circles are the 7px dots on the cooking-mode rail. Blind-stamped frames are a 1px dark line inset 7 to 9px from the cloth edge (15px on the spine side of cards). The bookplate has a double rule inset 8px.
+Soft and rounded everywhere. Photos and tiles 18px, the recipe intro and photo 26px, the search panel 24px, the sign-in card 28px, fields 16px, tick boxes 7px, and every button, chip, key and swatch a full pill or circle. Photos are shown whole-bleed in their rounded rectangle with `object-fit: cover`, with no frame, mount or border. The diamond tile is 32px, drawn in terracotta, ochre and majorelle on pattern ground; as a one-colour mask it is painted in the course pigment at 60% over a 22% pigment tint, offset per recipe so neighbours do not line up.
 
 ## Components
 
 ### Buttons
-Bound and pressed, never pill-shaped.
-- **Ribbon (start or carry on cooking):** oxblood with a faint silk sheen, white 650-weight text with the ribbon icon, 48px tall, swallowtail right end, bled off the left edge of the cover. Hover slides it 4px right; focus shows a 2px white inset ring.
-- **Cloth button:** bottle green cloth, on-cloth text, 44px, 2px radius, the lift shadow; hover brightens it (brightness 1.18); disabled at 55% opacity. Same in both themes.
-- **Plate button (sign-in):** white leaf on the cloth cover, ink text, 48px, a hairline drop and an inner rule 5px in, which turns oxblood on hover.
-- **Cooking-mode Next / Back:** 64px tall, 1.15rem/650. Next is oxblood (deep oxblood on hover); Back is page-coloured with a 1.5px strong rule, at 40% when disabled.
-- **Icon buttons:** 48px square, transparent on cloth, on-cloth icons; hover tints white at 8%.
+- **Shape:** pill (999px), 46px high, 800 weight.
+- **Primary:** terracotta fill, white text (dark mode: dark ground text); hover deepens to terracotta-deep; press scales to .97.
+- **Secondary:** sand surface with a 1.5px strong rule border; hover darkens the border to ink. The notes "Add note" button is ink-filled.
+- **Link buttons** are majorelle, 750 weight, underlined.
 
-### Chips
-- **Style:** square-cornered labels (2px), page fill, strong rule border, 34px tall, 0.88rem; a count in small muted text.
-- **State:** hover darkens the border to ink; selected ingredients are filled ink with page-coloured text and a close icon.
+### Wordmark and top bar
+Sticky sand bar, 56px, a hairline beneath. Wordmark left, majorelle nav links right. Hidden in cooking mode.
 
-### Cards / Containers
-- **Covers:** each card is a cloth cover (4:3.3) in its course cloth, with the spine edge, the lift shadow and the spine radius. A dish photo is pasted on whole in a 3px white mount; a picture of the recipe page fills the cover from the top. A cover without a photo shows the full title stamped on the cloth, centred inside a blind-stamped frame (up to four lines). Title and metadata sit below the cover, not on it.
-- **Bookplate:** white leaf, 1px strong rule plus a double rule inset 8px, the lift shadow.
-- **Slips:** white leaf, 1px rule border, slip shadow, 0.9rem by 1.1rem padding, text held to 70ch. Notes are signed in muted small text.
+### Course swatches
+Round 50px pigment discs with a 14px gap and the course name below, scrolled sideways. "All" is a four-pigment conic disc. Selected: a 3px ground ring then a 2.5px ink ring and ink label; hover scales 1.06; focus uses the focus colour for the ring.
 
-### Inputs / Fields
-- **Style:** page fill, 1px strong rule, 2px radius, 44px tall; a small 650-weight muted label above. Textareas use leaf fill in the notes form.
-- **Focus:** a 2px oxblood outline.
-- **Tick boxes:** drawn squares (1.2rem, 1.5px strong rule) that fill with ink and show a page-coloured tick, scaled in with the house ease. Ticked lines are struck through with a 2px ink bar.
+### Recipe card
+Rounded 5:4 thumb (photo, or the pigment pattern tile), bold title, muted meta line "time · serves n". A recipe needing something you lack gets a "Needs ..." line in deep terracotta and a dimmed greyscale thumb.
 
-### Navigation
-- **Top bar (spine):** sticky bottle green cloth, 52px minimum, foil brand at left, small on-cloth links at right that turn foil on hover. Hidden in cooking mode.
-- **Thumb index and method tabs:** cloth tabs in the course's cloth, 40px minimum, 0.9rem/600 (method tabs in Young Serif 1.1rem), on-cloth soft at rest, on-cloth when active. The active tab carries the ribbon bookmark (9px by 18px, oxblood, notched) hanging from its top right. Course tabs sit on a 3px cloth edge; see Layout for the desktop index.
+### Key ingredients
+Pill buttons under each card, 32px, with a green tick. Tapping marks "I don't have this": the pill turns dashed terracotta, the name is struck through and the icon becomes a cross. Recipes needing it move to a "hidden" list that can be shown.
 
-### Spine labels
-Section headings on the recipe and Add recipes pages are small cloth labels in the recipe's cloth: Young Serif 1.15rem in on-cloth, spine radius, no foil.
+### Search panel and chips
+The panel is a 24px-rounded block of the diamond pattern holding a search field and an ingredient field (48px, 16px radius, leading line icon, terracotta border on focus), chips and a "Goes well with" suggestion panel. Chips are pills: ink-filled with a tick for "have", dashed terracotta for "No ...".
+
+### Recipe page
+A pigment-tinted 26px intro panel (title, byline, lede, facts as label over bold value, primary "Start cooking" pill), the dish photo beside it, tag pills, a two-column ingredients and method layout. Ticks are 1.3rem rounded boxes filled with ink; ticked lines are struck through, not faded. Steps carry a pigment-ringed number disc; the step reached in cooking mode gets a terracotta ring. Steps and Flowchart is a two-part pill toggle. Tips and notes sit on rounded surface slips.
 
 ### Cooking mode
-One step per screen at poster size (see Typography), a muted time line, and a 52px "Mark done" toggle whose box fills with ink. A done step is struck through with a 3px ink bar. On the right edge a thin rail of 7px dots (ink when done) carries the ribbon mark, which slides down to the current step with one damped ease-out slide (0.55s). The ingredients drawer slides up from the bottom with a 3px cloth top edge and larger ticks (1.15rem text, 1.45rem boxes).
+Full screen. A pigment-tinted bar with close, title and Ingredients button. One step per screen at the Cook size, with "Step n of N", optional time, and a "Mark done" pill that fills the circle with ink and strikes the text (3px). A progress rail on the right edge: a hairline with a dot per step, a terracotta bar filled down to the current step ending in a ringed terracotta dot. A bottom bar of two 64px pills: Back (outlined) and Next (terracotta, 1.6 times wider). The ingredients drawer slides up with 24px top corners.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** frame screens and recipe identity with bookcloth: the woven texture over the cloth colour, always together.
-- **Do** bind each recipe in its course cloth and carry that cloth through cover, spine labels, step numbers, tabs and the cooking-mode bar.
-- **Do** keep oxblood for where you are and where your focus is: active-tab bookmark, current step, start or carry on cooking, the cooking-mode rail mark, the Next button, focus and selection.
-- **Do** use gold foil only at 24px and up; below that, stamp in on-cloth or on-cloth soft.
-- **Do** strike done ingredients and steps through with a solid ink bar (2px on the page, 3px in cooking mode).
-- **Do** paste photos in whole, in a white mount with a shadow, and give photo-less recipes a cloth cover with the title stamped.
-- **Do** size cooking-mode step text by step length, using the three poster sizes.
-- **Do** use the house ease (cubic-bezier(.16, 1, .3, 1)) for slides and lifts, and zero all motion under reduced motion.
+- **Do** set every piece of text in Nunito; use weight (500, 650, 800, 900) for hierarchy.
+- **Do** give each recipe a single course pigment and show it as a swatch, a tile, a tint and a number ring.
+- **Do** keep the diamond pattern to the search panel, the sign-in screen, the Add recipes header and photo-less tiles.
+- **Do** show photos plainly with rounded corners and no frame.
+- **Do** mark done and lacking by strike-through and a dashed or ink fill, with the tick or cross, not by fading alone.
+- **Do** keep touch targets at least 32px (keys), 46px (buttons), 64px (cooking Back/Next), and honour `prefers-reduced-motion`.
+- **Do** use the one ease, `cubic-bezier(.16, 1, .3, 1)`, for lifts and slides.
 
 ### Don't:
-- **Don't** set Young Serif on the page ground; on the page, everything is system sans.
-- **Don't** use oxblood as a course cloth, a heading colour or decoration.
-- **Don't** grey out done items; strike them through.
-- **Don't** tint, filter or crop photos into uniform tiles.
-- **Don't** round corners beyond the spine radii; no pills.
-- **Don't** build the cream-page, serif-everywhere recipe blog or the white photo-grid recipe site.
-
-## Raster provenance
-
-The site ships no raster images. Its only image assets are inline SVG written in the build: the favicon and the endpaper repeat (both data URIs) and the icon symbols in the page. Dish and page photos load at runtime from each signed-in user's Google Drive and are never committed. The demo data (`docs/demo/recipes.json`) has no photos. Young Serif is loaded from the Google Fonts CDN, not self-hosted.
+- **Don't** bring back the clothbound look: no woven textures, gold foil, ribbons, blind-stamped frames or spine labels.
+- **Don't** use a serif or a literary wordmark.
+- **Don't** frame or mount photos like a book plate.
+- **Don't** use a course pigment as a button colour, or terracotta as a course.
+- **Don't** add hard shadows, uppercase eyebrow labels or kickers.

@@ -402,7 +402,7 @@ body.cooking { overflow: hidden; }
   min-width: 48px; min-height: 48px; padding: 0 .8rem; border: 0; background: transparent; color: var(--ink);
   font-weight: 800; font-size: .95rem; border-radius: 999px; text-decoration: none;
 }
-.icon-button:hover { background: rgb(59 42 33 / .08); }
+.icon-button:hover { background: color-mix(in oklab, var(--ink) 10%, transparent); }
 .icon-button .i { width: 1.4rem; height: 1.4rem; }
 
 .cook-page { position: relative; overflow-y: auto; padding: clamp(1.2rem, 5vw, 3rem) calc(36px + clamp(.4rem, 3vw, 3rem)) 1.5rem clamp(1.2rem, 5vw, 3rem); }

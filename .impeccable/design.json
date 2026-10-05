@@ -1,374 +1,342 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-05T12:34:17.377Z",
+  "generatedAt": "2026-10-05T13:45:27.417Z",
   "title": "Design System: Recipe book",
   "extensions": {
     "colorMeta": {
-      "cloth": {
+      "terracotta-accent": {
         "role": "primary",
-        "displayName": "Bottle green bookcloth",
-        "canonical": "#1f3a2b",
-        "oklch": "oklch(32.2% 0.043 158.5)",
+        "displayName": "Terracotta",
+        "canonical": "#b4502c",
         "tonalRamp": [
-          "#001005",
-          "#102b1d",
-          "#2e4939",
-          "#4c6958",
-          "#6d8b79",
-          "#8fae9b",
-          "#b3d2bf",
-          "#e2f4e9"
+          "#3d1b0f",
+          "#662e19",
+          "#8f4023",
+          "#bd542e",
+          "#d57553",
+          "#e19d84",
+          "#edc4b5",
+          "#f8e8e2"
         ],
-        "dark": "#1d3628"
+        "dark": "#e0784f"
       },
-      "foil": {
+      "terracotta-deep": {
         "role": "primary",
-        "displayName": "Gold foil",
-        "canonical": "#e0bf55",
-        "oklch": "oklch(81.3% 0.130 92.0)",
+        "displayName": "Deep terracotta",
+        "canonical": "#963f20",
         "tonalRamp": [
-          "#140900",
-          "#372000",
-          "#5b3c00",
-          "#7c5d00",
-          "#9e7f00",
-          "#bda34f",
-          "#d8c998",
-          "#f4eedd"
-        ]
-      },
-      "cloth-navy": {
-        "role": "secondary",
-        "displayName": "Navy bookcloth",
-        "canonical": "#1d2b48",
-        "oklch": "oklch(29.2% 0.057 -96.3)",
-        "tonalRamp": [
-          "#020922",
-          "#162440",
-          "#324260",
-          "#516182",
-          "#7182a5",
-          "#93a5c9",
-          "#b6caef",
-          "#e6efff"
-        ]
-      },
-      "cloth-teal": {
-        "role": "secondary",
-        "displayName": "Teal bookcloth",
-        "canonical": "#17434a",
-        "oklch": "oklch(35.6% 0.049 -150.4)",
-        "tonalRamp": [
-          "#001016",
-          "#002b32",
-          "#1e4950",
-          "#3e6970",
-          "#5f8b92",
-          "#81aeb6",
-          "#a5d3db",
-          "#ddf3f7"
-        ]
-      },
-      "cloth-plum": {
-        "role": "secondary",
-        "displayName": "Plum bookcloth",
-        "canonical": "#3f2345",
-        "oklch": "oklch(30.8% 0.069 -39.6)",
-        "tonalRamp": [
-          "#16021a",
-          "#341839",
-          "#523559",
-          "#73547a",
-          "#95759c",
-          "#b997c0",
-          "#ddbce4",
-          "#f6eaf8"
-        ]
-      },
-      "cloth-tobacco": {
-        "role": "secondary",
-        "displayName": "Tobacco bookcloth",
-        "canonical": "#46301f",
-        "oklch": "oklch(33.0% 0.042 58.3)",
-        "tonalRamp": [
-          "#180600",
-          "#34200f",
-          "#533c2b",
-          "#745c49",
-          "#967d69",
-          "#ba9f8b",
-          "#dfc3af",
-          "#fbebdf"
-        ]
-      },
-      "cloth-olive": {
-        "role": "secondary",
-        "displayName": "Olive bookcloth",
-        "canonical": "#3a3d1c",
-        "oklch": "oklch(34.8% 0.051 113.3)",
-        "tonalRamp": [
-          "#0c0d00",
-          "#252806",
-          "#424524",
-          "#616542",
-          "#828662",
-          "#a5a984",
-          "#c9cda7",
-          "#eef1df"
-        ]
-      },
-      "ribbon": {
-        "role": "tertiary",
-        "displayName": "Oxblood ribbon",
-        "canonical": "#8a2232",
-        "oklch": "oklch(42.5% 0.138 17.0)",
-        "tonalRamp": [
-          "#1e0003",
-          "#4b0212",
-          "#7b1026",
-          "#a13844",
-          "#c75b64",
-          "#e0888d",
-          "#f1b8ba",
-          "#fee9e9"
+          "#3f1a0d",
+          "#692c16",
+          "#933e1f",
+          "#c15129",
+          "#d9734e",
+          "#e49b81",
+          "#efc3b3",
+          "#f9e8e2"
         ],
-        "dark": "#a8344a"
+        "dark": "#ea8c66"
       },
-      "ribbon-deep": {
-        "role": "tertiary",
-        "displayName": "Deep oxblood ribbon",
-        "canonical": "#6e1a27",
-        "oklch": "oklch(36.2% 0.117 16.7)",
+      "pigment-terracotta": {
+        "role": "secondary",
+        "displayName": "Terracotta pigment",
+        "canonical": "#b8532f",
         "tonalRamp": [
-          "#1e0003",
-          "#4b0212",
-          "#731f2b",
-          "#984149",
-          "#be6369",
-          "#e0888d",
-          "#f1b8ba",
-          "#fee9e9"
+          "#3d1b10",
+          "#662e1a",
+          "#8e4024",
+          "#bb5430",
+          "#d37654",
+          "#e09d85",
+          "#ecc4b6",
+          "#f8e8e3"
         ],
-        "dark": "#8a2232"
+        "dark": "#d36a43"
       },
-      "on-ribbon": {
+      "pigment-ochre": {
+        "role": "secondary",
+        "displayName": "Ochre",
+        "canonical": "#d49a37",
+        "tonalRamp": [
+          "#3f2d0e",
+          "#694b17",
+          "#936820",
+          "#c1892a",
+          "#d9a64f",
+          "#e4bf81",
+          "#efd9b3",
+          "#f9f0e2"
+        ],
+        "dark": "#dca64a"
+      },
+      "pigment-mint": {
+        "role": "secondary",
+        "displayName": "Mint",
+        "canonical": "#7ea488",
+        "tonalRamp": [
+          "#202d23",
+          "#354b3b",
+          "#4a6952",
+          "#618a6c",
+          "#81a68b",
+          "#a5c0ac",
+          "#c9d9cd",
+          "#eaf0ec"
+        ],
+        "dark": "#8fb79a"
+      },
+      "pigment-rose-clay": {
+        "role": "secondary",
+        "displayName": "Rose clay",
+        "canonical": "#d6a196",
+        "tonalRamp": [
+          "#371b15",
+          "#5c2d24",
+          "#804032",
+          "#a95442",
+          "#c37565",
+          "#d49c91",
+          "#e5c4bd",
+          "#f5e8e5"
+        ],
+        "dark": "#dcab9f"
+      },
+      "pigment-majorelle": {
+        "role": "secondary",
+        "displayName": "Majorelle blue",
+        "canonical": "#2f4fa3",
+        "tonalRamp": [
+          "#111d3b",
+          "#1d3063",
+          "#28438b",
+          "#3558b6",
+          "#5979cf",
+          "#88a0dd",
+          "#b8c6ea",
+          "#e3e9f7"
+        ],
+        "dark": "#6f8ad6"
+      },
+      "pigment-olive": {
+        "role": "secondary",
+        "displayName": "Olive",
+        "canonical": "#8c8a4a",
+        "tonalRamp": [
+          "#32311a",
+          "#53522c",
+          "#75733e",
+          "#999751",
+          "#b5b373",
+          "#cac99b",
+          "#dfdec3",
+          "#f3f2e8"
+        ],
+        "dark": "#aaa765"
+      },
+      "sand-ground": {
         "role": "neutral",
-        "displayName": "On ribbon",
+        "displayName": "Sand ground",
+        "canonical": "#f6efe6",
+        "tonalRamp": [
+          "#382914",
+          "#5e4422",
+          "#835f2f",
+          "#ad7c3e",
+          "#c69a61",
+          "#d7b78e",
+          "#e7d4bb",
+          "#f6eee5"
+        ],
+        "dark": "#1e1612"
+      },
+      "sand-surface": {
+        "role": "neutral",
+        "displayName": "Sand surface",
+        "canonical": "#fffaf4",
+        "tonalRamp": [
+          "#4d2a00",
+          "#804600",
+          "#b36100",
+          "#eb8000",
+          "#ff9e29",
+          "#ffb966",
+          "#ffd5a3",
+          "#ffefdb"
+        ],
+        "dark": "#2a201a"
+      },
+      "clay-ink": {
+        "role": "neutral",
+        "displayName": "Clay ink",
+        "canonical": "#3b2a21",
+        "tonalRamp": [
+          "#31231b",
+          "#523a2e",
+          "#725140",
+          "#966b54",
+          "#b28b76",
+          "#c8ac9d",
+          "#decdc4",
+          "#f2ece8"
+        ],
+        "dark": "#f2e6da"
+      },
+      "clay-muted": {
+        "role": "neutral",
+        "displayName": "Clay muted",
+        "canonical": "#74594a",
+        "tonalRamp": [
+          "#2f241e",
+          "#4e3c32",
+          "#6d5446",
+          "#8f6e5b",
+          "#ac8d7c",
+          "#c3aea2",
+          "#dbcec7",
+          "#f1ece9"
+        ],
+        "dark": "#c2a998"
+      },
+      "sand-rule": {
+        "role": "neutral",
+        "displayName": "Sand rule",
+        "canonical": "#e8d9c8",
+        "tonalRamp": [
+          "#362717",
+          "#5a4126",
+          "#7e5c35",
+          "#a57845",
+          "#c09768",
+          "#d2b493",
+          "#e4d2be",
+          "#f4eee6"
+        ],
+        "dark": "#3a2d25"
+      },
+      "sand-rule-strong": {
+        "role": "neutral",
+        "displayName": "Sand rule strong",
+        "canonical": "#cfb59d",
+        "tonalRamp": [
+          "#332619",
+          "#563f2a",
+          "#78583b",
+          "#9d744d",
+          "#b9926f",
+          "#cdb198",
+          "#e1d0c1",
+          "#f3ede7"
+        ],
+        "dark": "#5a4a3f"
+      },
+      "pattern-ground": {
+        "role": "neutral",
+        "displayName": "Pattern ground",
+        "canonical": "#efd9c3",
+        "tonalRamp": [
+          "#3c2610",
+          "#65401b",
+          "#8d5926",
+          "#b97531",
+          "#d29456",
+          "#dfb386",
+          "#ecd1b7",
+          "#f7ede3"
+        ],
+        "dark": "#33251d"
+      },
+      "majorelle-link": {
+        "role": "neutral",
+        "displayName": "Majorelle link",
+        "canonical": "#2f4fa3",
+        "tonalRamp": [
+          "#111d3b",
+          "#1d3063",
+          "#28438b",
+          "#3558b6",
+          "#5979cf",
+          "#88a0dd",
+          "#b8c6ea",
+          "#e3e9f7"
+        ],
+        "dark": "#a9bbf0"
+      },
+      "have-green": {
+        "role": "neutral",
+        "displayName": "Have green",
+        "canonical": "#3f6b4e",
+        "tonalRamp": [
+          "#1c3023",
+          "#2f503b",
+          "#427052",
+          "#57946c",
+          "#78b08b",
+          "#9fc6ac",
+          "#c5ddcd",
+          "#e9f2ec"
+        ],
+        "dark": "#9cc4a6"
+      },
+      "error-red": {
+        "role": "neutral",
+        "displayName": "Error red",
+        "canonical": "#a3261b",
+        "tonalRamp": [
+          "#420f0b",
+          "#6d1a12",
+          "#992419",
+          "#c92f21",
+          "#e15447",
+          "#e9857c",
+          "#f2b6b0",
+          "#fae2e0"
+        ],
+        "dark": "#ff9d8f"
+      },
+      "on-accent": {
+        "role": "neutral",
+        "displayName": "On accent",
         "canonical": "#ffffff",
-        "oklch": "oklch(100.0% 0.000 89.9)",
         "tonalRamp": [
-          "#0b0b0b",
-          "#252525",
-          "#424242",
-          "#616161",
-          "#828282",
-          "#a5a5a5",
-          "#c9c9c9",
-          "#eeeeee"
-        ]
-      },
-      "on-cloth": {
-        "role": "neutral",
-        "displayName": "On cloth",
-        "canonical": "#eef0e6",
-        "oklch": "oklch(95.1% 0.013 115.8)",
-        "tonalRamp": [
-          "#0b0c06",
-          "#25261f",
-          "#41433b",
-          "#61625a",
-          "#82837a",
-          "#a4a69d",
-          "#c8cac1",
-          "#eef0e6"
-        ]
-      },
-      "on-cloth-soft": {
-        "role": "neutral",
-        "displayName": "On cloth soft",
-        "canonical": "#c9cfbf",
-        "oklch": "oklch(84.5% 0.023 123.7)",
-        "tonalRamp": [
-          "#090d04",
-          "#23271b",
-          "#3f4437",
-          "#5e6456",
-          "#7f8576",
-          "#a2a898",
-          "#c6ccbc",
-          "#ebf1e1"
-        ]
-      },
-      "page": {
-        "role": "neutral",
-        "displayName": "Page",
-        "canonical": "#f6f7f3",
-        "oklch": "oklch(97.4% 0.005 117.9)",
-        "tonalRamp": [
-          "#0b0b09",
-          "#252522",
-          "#42423f",
-          "#61625e",
-          "#82837f",
-          "#a4a5a2",
-          "#c9cac6",
-          "#eeefeb"
+          "#262626",
+          "#404040",
+          "#595959",
+          "#757575",
+          "#949494",
+          "#b3b3b3",
+          "#d1d1d1",
+          "#ededed"
         ],
-        "dark": "#121813"
-      },
-      "leaf": {
-        "role": "neutral",
-        "displayName": "Leaf",
-        "canonical": "#ffffff",
-        "oklch": "oklch(100.0% 0.000 89.9)",
-        "tonalRamp": [
-          "#0b0b0b",
-          "#252525",
-          "#424242",
-          "#616161",
-          "#828282",
-          "#a5a5a5",
-          "#c9c9c9",
-          "#eeeeee"
-        ],
-        "dark": "#1a221c"
-      },
-      "ink": {
-        "role": "neutral",
-        "displayName": "Ink",
-        "canonical": "#17211b",
-        "oklch": "oklch(23.6% 0.018 158.3)",
-        "tonalRamp": [
-          "#050e08",
-          "#1e2822",
-          "#3a453e",
-          "#59655d",
-          "#7a867e",
-          "#9ca9a1",
-          "#c0cdc5",
-          "#e5f2ea"
-        ],
-        "dark": "#e8ebe2"
-      },
-      "muted": {
-        "role": "neutral",
-        "displayName": "Muted",
-        "canonical": "#55604f",
-        "oklch": "oklch(47.4% 0.030 134.5)",
-        "tonalRamp": [
-          "#060e03",
-          "#1f2819",
-          "#3b4636",
-          "#5a6554",
-          "#7b8775",
-          "#9daa97",
-          "#c1ceba",
-          "#e8f2e3"
-        ],
-        "dark": "#a2ac9c"
-      },
-      "rule": {
-        "role": "neutral",
-        "displayName": "Rule",
-        "canonical": "#d6dbcf",
-        "oklch": "oklch(88.4% 0.017 125.3)",
-        "tonalRamp": [
-          "#090c05",
-          "#23271e",
-          "#40443a",
-          "#5f6359",
-          "#808479",
-          "#a2a79c",
-          "#c6cbbf",
-          "#ecf1e4"
-        ],
-        "dark": "#2b352e"
-      },
-      "rule-strong": {
-        "role": "neutral",
-        "displayName": "Rule strong",
-        "canonical": "#b9c1b0",
-        "oklch": "oklch(80.0% 0.025 127.7)",
-        "tonalRamp": [
-          "#080d03",
-          "#22271a",
-          "#3e4536",
-          "#5d6455",
-          "#7e8576",
-          "#a0a898",
-          "#c4cdbb",
-          "#eaf2e1"
-        ],
-        "dark": "#3d4a40"
-      },
-      "endpaper": {
-        "role": "neutral",
-        "displayName": "Endpaper",
-        "canonical": "#dce4d2",
-        "oklch": "oklch(90.8% 0.026 126.6)",
-        "tonalRamp": [
-          "#080d03",
-          "#22271a",
-          "#3e4536",
-          "#5d6455",
-          "#7e8575",
-          "#a1a897",
-          "#c5ccbb",
-          "#eaf2e1"
-        ],
-        "dark": "#18211b"
-      },
-      "endpaper-ink": {
-        "role": "neutral",
-        "displayName": "Endpaper ink",
-        "canonical": "#1f3a2b",
-        "oklch": "oklch(32.2% 0.043 158.5)",
-        "tonalRamp": [
-          "#001005",
-          "#102b1d",
-          "#2e4939",
-          "#4c6958",
-          "#6d8b79",
-          "#8fae9b",
-          "#b3d2bf",
-          "#e2f4e9"
-        ],
-        "dark": "#6f9a7e"
-      },
-      "error": {
-        "role": "neutral",
-        "displayName": "Error",
-        "canonical": "#9b1c1c",
-        "oklch": "oklch(44.8% 0.162 26.8)",
-        "tonalRamp": [
-          "#1f0001",
-          "#4b0305",
-          "#7d0c10",
-          "#aa2d29",
-          "#cd584f",
-          "#e18a80",
-          "#f1b9b2",
-          "#fee9e6"
-        ],
-        "dark": "#ff9a9a"
+        "dark": "#1e1612"
       }
     },
     "typographyMeta": {
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "Lowercase \"recipe book.\" in 900 weight with a terracotta full stop; top bar and sign-in."
+      },
       "display": {
         "displayName": "Display",
-        "purpose": "Cover titles in foil on cloth (recipe, Add recipes, sign-in at clamp(2.6rem, 11vw, 3.6rem))."
+        "purpose": "Recipe title and Add recipes heading."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "The foil brand; foil card titles on photo-less covers at 230px and wider."
+        "purpose": "Section titles with a pigment dot."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Spine labels, method tabs, cooking-mode bar title and step numbers, on cloth in on-cloth colours, never foil."
+        "purpose": "Card titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Reading text, tabular figures, 60 to 70ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Meta lines, chips, keys, swatch names, fact labels; sentence case."
       },
       "cook": {
         "displayName": "Cook",
-        "purpose": "Poster-size step text in cooking mode. Base over 140 characters; mid (71 to 140) clamp(2.1rem, 9.2vw, 3.5rem)/1.16; short (70 or fewer) clamp(2.5rem, 11vw, 4.2rem)/1.12.",
+        "purpose": "Poster-size step text. Base over 140 characters; mid (71 to 140) clamp(2.1rem, 9.2vw, 3.5rem)/1.16; short (70 or fewer) clamp(2.5rem, 11vw, 4.2rem)/1.12.",
         "variants": {
           "mid": {
             "fontSize": "clamp(2.1rem, 9.2vw, 3.5rem)",
@@ -379,73 +347,19 @@
             "lineHeight": 1.12
           }
         }
-      },
-      "body": {
-        "displayName": "Body",
-        "purpose": "All reading text on the page, tabular figures, 60 to 70ch."
-      },
-      "body-strong": {
-        "displayName": "Body strong",
-        "purpose": "Card titles, buttons, ingredient quantities."
-      },
-      "label": {
-        "displayName": "Label",
-        "purpose": "Uppercase fact labels and table headings."
       }
     },
-    "materials": [
-      {
-        "name": "bookcloth-weave",
-        "value": "repeating-linear-gradient(0deg, rgb(255 255 255 / .045) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(0 0 0 / .14) 0 1px, transparent 1px 3px)",
-        "purpose": "Fine woven texture laid over every cloth colour. Intentional; the detector advisory on the repeating gradient is accepted."
-      },
-      {
-        "name": "endpaper",
-        "value": "32px repeat of a diamond and corner dots in endpaper ink at 50% (45% dark), inline SVG data URI on the endpaper colour",
-        "purpose": "Behind the search bookplate on home."
-      },
-      {
-        "name": "blind-stamped-frame",
-        "value": "border: 1px solid rgb(0 0 0 / .32); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06); inset 7px (covers 8px; cards 9px 9px 9px 15px)",
-        "purpose": "Panel pressed into cloth covers."
-      },
-      {
-        "name": "ribbon-sheen",
-        "value": "linear-gradient(180deg, rgb(255 255 255 / .08), transparent 40%, rgb(0 0 0 / .12))",
-        "purpose": "Silk sheen on the start-cooking ribbon."
-      }
-    ],
     "shadows": [
       {
         "name": "lift",
-        "value": "0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22)",
-        "dark": "0 1px 2px rgb(0 0 0 / .4), 0 8px 20px -8px rgb(0 0 0 / .6)",
-        "purpose": "Bound or pasted objects on the page."
+        "value": "0 1px 2px rgb(59 42 33 / .08), 0 8px 22px -10px rgb(59 42 33 / .3)",
+        "dark": "0 1px 2px rgb(0 0 0 / .4), 0 10px 24px -10px rgb(0 0 0 / .7)",
+        "purpose": "Card photo on hover, suggestion panel, toast, sign-in card, flow detail."
       },
       {
-        "name": "cover-hover",
-        "value": "0 2px 3px rgb(23 33 27 / .16), 0 14px 26px -10px rgb(23 33 27 / .35)",
-        "purpose": "Card cover lifted 3px on hover."
-      },
-      {
-        "name": "slip",
-        "value": "0 1px 1px rgb(23 33 27 / .08), 0 3px 10px -4px rgb(23 33 27 / .18)",
-        "purpose": "Tipped-in tips and notes."
-      },
-      {
-        "name": "mounted-photo",
-        "value": "0 1px 2px rgb(0 0 0 / .4), 0 4px 10px -2px rgb(0 0 0 / .45)",
-        "purpose": "Photo pasted on a cover."
-      },
-      {
-        "name": "plate-button",
-        "value": "0 1px 0 rgb(0 0 0 / .3), 0 4px 12px -4px rgb(0 0 0 / .5)",
-        "purpose": "Sign-in button on the cloth cover."
-      },
-      {
-        "name": "tab-fold",
-        "value": "inset 0 -10px 10px -8px rgb(0 0 0 / .45)",
-        "purpose": "Inactive tabs; desktop index uses inset 10px 0 10px -8px."
+        "name": "field",
+        "value": "0 1px 2px rgb(59 42 33 / .08)",
+        "purpose": "Search inputs on the pattern."
       },
       {
         "name": "drawer",
@@ -457,32 +371,22 @@
       {
         "name": "ease",
         "value": "cubic-bezier(.16, 1, .3, 1)",
-        "purpose": "The one damped ease-out for slides and lifts."
+        "purpose": "The one damped ease-out for lifts, slides and the swatch ring."
       },
       {
         "name": "rail-mark",
-        "value": "transform .55s ease",
-        "purpose": "Ribbon sliding down the cooking-mode rail to the current step."
+        "value": "transform .55s var(--ease)",
+        "purpose": "Terracotta bar sliding down the cooking rail."
       },
       {
-        "name": "ribbon-drawer",
-        "value": "transform .4s ease",
-        "purpose": "Start-cooking ribbon nudge; drawer slide."
-      },
-      {
-        "name": "cover",
-        "value": "transform, box-shadow .35s ease",
-        "purpose": "Card cover lift on hover."
-      },
-      {
-        "name": "tab",
-        "value": "transform .3s ease, color .2s",
-        "purpose": "Tab rising on hover."
+        "name": "drawer",
+        "value": "transform .4s var(--ease)",
+        "purpose": "Ingredients drawer slide."
       },
       {
         "name": "tick",
-        "value": "transform .2s ease",
-        "purpose": "Tick scaling into a box; cloth button filter."
+        "value": "transform .2s var(--ease)",
+        "purpose": "Tick scaling into a box."
       },
       {
         "name": "reduced-motion",
@@ -492,175 +396,167 @@
     ],
     "breakpoints": [
       {
-        "name": "card-foil (container)",
-        "value": "230px"
-      },
-      {
         "name": "phone-grid (max)",
         "value": "520px"
       },
       {
-        "name": "bookplate-two-column",
+        "name": "finder-two-column",
         "value": "700px"
+      },
+      {
+        "name": "swatches-centred",
+        "value": "812px"
       },
       {
         "name": "ingredients-column",
         "value": "860px"
       },
       {
-        "name": "cover-and-plate",
+        "name": "intro-and-photo",
         "value": "900px"
-      },
+      }
+    ],
+    "patterns": [
       {
-        "name": "side-index",
-        "value": "1000px"
+        "name": "diamond-tile",
+        "value": "32px tile: terracotta diamond outline at 60%, ochre inner diamond, majorelle corner dots; dark variant uses lifted pigments at 55 to 60%; also a one-colour mask painted in the course pigment at 60%",
+        "purpose": "Behind the search panel, sign-in and Add recipes header; photo-less recipe tiles."
       }
     ],
     "fonts": [
       {
-        "family": "Young Serif",
-        "source": "Google Fonts CDN (not self-hosted)"
+        "family": "Nunito",
+        "source": "Google Fonts CDN (not self-hosted), weights 400 to 900"
       }
     ],
-    "rasterProvenance": "No shipping raster images. Favicon, endpaper and icons are inline SVG written in the build. Dish and page photos load at runtime from each user's Google Drive; the demo data has none."
+    "rasterProvenance": "No shipping raster images. Favicon, pattern and icons are inline SVG. Dish and page photos load at runtime from each user's Google Drive."
   },
   "components": [
     {
-      "name": "Ribbon (start cooking)",
+      "name": "Primary button",
       "kind": "button",
-      "refersTo": "ribbon",
-      "description": "Oxblood silk with a swallowtail end; starts or resumes cooking from the recipe cover.",
-      "html": "<a class=\"ds-ribbon\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linejoin=\"round\"><path d=\"M7 3h10v18l-5-4-5 4z\"/></svg> Start cooking</a>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-ribbon { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; display: inline-flex; align-items: center; gap: .55rem; min-height: 48px; padding: .7rem 2.1rem .7rem 1.1rem; background: linear-gradient(180deg, rgb(255 255 255 / .08), transparent 40%, rgb(0 0 0 / .12)), var(--ribbon); color: var(--on-ribbon); font-weight: 650; letter-spacing: .01em; text-decoration: none; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 50%, 100% 100%, 0 100%); transition: transform .4s var(--ease); } .ds-ribbon:hover { transform: translateX(4px); } .ds-ribbon:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--on-ribbon); }"
+      "refersTo": "button-primary",
+      "description": "Terracotta pill for the main action.",
+      "html": "<button class=\"ds-btn\">Start cooking</button>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-btn{font:inherit;display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:.6rem 1.25rem;border:1.5px solid var(--accent);border-radius:999px;background:var(--accent);color:var(--on-accent);font-weight:800;cursor:pointer;transition:background-color .2s,transform .3s var(--ease)}.ds-btn:hover{background:var(--accent-deep);border-color:var(--accent-deep)}.ds-btn:active{transform:scale(.97)}.ds-btn:focus-visible{outline:2.5px solid #2f4fa3;outline-offset:2px}"
     },
     {
-      "name": "Cloth button",
+      "name": "Secondary button",
       "kind": "button",
-      "refersTo": "button-cloth",
-      "description": "The ordinary action button (Add note), bottle green cloth in both themes.",
-      "html": "<button class=\"ds-button\">Add note</button>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-button { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; min-height: 44px; padding: .6rem 1.2rem; border: 0; background-color: var(--cloth); background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / .045) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(0 0 0 / .14) 0 1px, transparent 1px 3px); color: var(--on-cloth); font-weight: 650; border-radius: 2px; box-shadow: var(--lift); transition: filter .2s; cursor: pointer; } .ds-button:hover { filter: brightness(1.18); } .ds-button:focus-visible { outline: 2px solid var(--ribbon); outline-offset: 2px; } .ds-button:disabled { opacity: .55; }"
-    },
-    {
-      "name": "Cooking-mode Next and Back",
-      "kind": "button",
-      "refersTo": "cook-next",
-      "description": "The 64px nav pair at the foot of cooking mode; Next is the ribbon.",
-      "html": "<div class=\"ds-cook-nav\"><button class=\"ds-prev\">Back</button><button class=\"ds-next\">Next <svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 5l7 7-7 7\"/></svg></button></div>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-cook-nav { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; padding: 10px 12px; background: var(--leaf); border-top: 1px solid var(--rule); } .ds-cook-nav button { min-height: 64px; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; font: inherit; font-size: 1.15rem; font-weight: 650; border-radius: 2px; cursor: pointer; } .ds-prev { border: 1.5px solid var(--rule-strong); background: var(--page); color: var(--ink); } .ds-next { border: 0; background: var(--ribbon); color: var(--on-ribbon); } .ds-next:hover { background: var(--ribbon-deep); } .ds-cook-nav button:focus-visible { outline: 2px solid var(--ribbon); outline-offset: 2px; }"
+      "refersTo": "button-secondary",
+      "description": "Outlined pill on the surface colour.",
+      "html": "<button class=\"ds-btn2\">Add note</button>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-btn2{font:inherit;min-height:46px;padding:.6rem 1.25rem;border:1.5px solid var(--rule-strong);border-radius:999px;background:var(--surface);color:var(--ink);font-weight:800;cursor:pointer}.ds-btn2:hover{border-color:var(--ink)}.ds-btn2:focus-visible{outline:2.5px solid #2f4fa3;outline-offset:2px}"
     },
     {
       "name": "Search field",
       "kind": "input",
-      "refersTo": "input",
-      "description": "Labelled field on the bookplate; oxblood outline on focus.",
-      "html": "<label class=\"ds-field\"><span>Search by name, book, author or cuisine</span><input placeholder=\"Search recipes\"></label>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-field { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; display: grid; gap: .2rem; color: var(--ink); } .ds-field span { font-size: .78rem; font-weight: 650; color: var(--muted); letter-spacing: .02em; } .ds-field input { font: inherit; width: 100%; min-height: 44px; padding: .55em .75em; background: var(--page); color: var(--ink); border: 1px solid var(--rule-strong); border-radius: 2px; } .ds-field input::placeholder { color: var(--muted); } .ds-field input:focus { outline: 2px solid var(--ribbon); outline-offset: -1px; }"
+      "refersTo": "search-field",
+      "description": "Rounded field on the patterned panel; terracotta border on focus.",
+      "html": "<label class=\"ds-field\"><input placeholder=\"Search recipes\"></label>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-field input{font:inherit;font-weight:650;width:100%;min-height:48px;padding:.6em .9em;background:var(--surface);color:var(--ink);border:1.5px solid transparent;border-radius:16px;box-shadow:0 1px 2px rgb(59 42 33/.08)}.ds-field input::placeholder{color:var(--muted)}.ds-field input:focus{outline:none;border-color:var(--accent)}"
     },
     {
       "name": "Ingredient chips",
       "kind": "chip",
-      "refersTo": "label-chip",
-      "description": "Square-cornered labels; selected ingredients fill with ink.",
-      "html": "<div class=\"ds-chips\"><button class=\"ds-label ds-on\">tomato <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\" stroke-linecap=\"round\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg></button><button class=\"ds-label\">basil <small>3</small></button></div>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-chips { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; display: flex; flex-wrap: wrap; gap: .4rem; } .ds-label { font: inherit; display: inline-flex; align-items: center; gap: .35rem; min-height: 34px; border: 1px solid var(--rule-strong); background: var(--page); color: var(--ink); padding: .25em .7em; font-size: .88rem; border-radius: 2px; cursor: pointer; } .ds-label small { color: var(--muted); font-size: .78rem; } .ds-label:hover { border-color: var(--ink); } .ds-label.ds-on { background: var(--ink); color: var(--page); border-color: var(--ink); } .ds-label:focus-visible { outline: 2px solid var(--ribbon); outline-offset: 2px; }"
+      "refersTo": "chip",
+      "description": "Pills: ink-filled for \"have\", dashed terracotta for \"No ...\".",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip ds-have\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg> tomato</button><button class=\"ds-chip ds-lack\">No basil <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg></button><button class=\"ds-chip\">garlic <small>12</small></button></div>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-chips{display:flex;flex-wrap:wrap;gap:6px}.ds-chip{font:inherit;display:inline-flex;align-items:center;gap:.35rem;min-height:36px;padding:.2rem .8rem;border:1.5px solid var(--rule-strong);background:var(--surface);color:var(--ink);border-radius:999px;font-size:.9rem;font-weight:750;cursor:pointer}.ds-chip small{color:var(--muted);font-size:.78rem}.ds-chip:hover{border-color:var(--ink)}.ds-have{background:var(--ink);color:var(--ground);border-color:var(--ink)}.ds-lack{border-style:dashed;border-color:var(--accent);color:var(--accent-deep)}.ds-chip:focus-visible{outline:2.5px solid #2f4fa3;outline-offset:2px}"
     },
     {
-      "name": "Thumb index with ribbon bookmark",
+      "name": "Course swatches",
       "kind": "nav",
-      "refersTo": "tab",
-      "description": "Course tabs in their cloths on a 3px cloth edge; the active tab carries the ribbon bookmark.",
-      "html": "<nav class=\"ds-index\"><button class=\"ds-tab ds-on\" style=\"--c:#1f3a2b\">All</button><button class=\"ds-tab\" style=\"--c:#46301f\">Baking</button><button class=\"ds-tab\" style=\"--c:#1d2b48\">Main</button><button class=\"ds-tab\" style=\"--c:#3a3d1c\">Side</button></nav>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-index { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; display: flex; gap: 4px; padding: 14px 16px 0; border-bottom: 3px solid var(--cloth); } .ds-tab { position: relative; border: 0; min-height: 40px; padding: .45rem 1.6rem .4rem 1rem; border-radius: 6px 6px 0 0; font: inherit; font-size: .9rem; font-weight: 600; background-color: var(--c, var(--cloth)); background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / .045) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(0 0 0 / .14) 0 1px, transparent 1px 3px); color: var(--on-cloth-soft); transform: translateY(6px); box-shadow: inset 0 -10px 10px -8px rgb(0 0 0 / .45); transition: transform .3s var(--ease), color .2s; cursor: pointer; } .ds-tab:hover { color: var(--on-cloth); transform: translateY(3px); } .ds-tab.ds-on { transform: none; color: var(--on-cloth); box-shadow: none; } .ds-tab.ds-on::after { content: \"\"; position: absolute; top: 0; right: 9px; width: 9px; height: 18px; background: var(--ribbon); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 5px), 0 100%); } .ds-tab:focus-visible { outline: 2px solid var(--ribbon); outline-offset: 2px; }"
+      "refersTo": "swatch",
+      "description": "Round pigment discs scrolled sideways; selected gets an ink ring.",
+      "html": "<nav class=\"ds-swatches\"><button class=\"ds-sw ds-on\" style=\"--pg:#b8532f\"><span class=\"ds-dot\"></span>Main</button><button class=\"ds-sw\" style=\"--pg:#d49a37\"><span class=\"ds-dot\"></span>Baking</button><button class=\"ds-sw\" style=\"--pg:#7ea488\"><span class=\"ds-dot\"></span>Side</button><button class=\"ds-sw\" style=\"--pg:#d6a196\"><span class=\"ds-dot\"></span>Dessert</button><button class=\"ds-sw\" style=\"--pg:#2f4fa3\"><span class=\"ds-dot\"></span>Soup</button><button class=\"ds-sw\" style=\"--pg:#8c8a4a\"><span class=\"ds-dot\"></span>Sauce</button></nav>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-swatches{display:flex;gap:14px;overflow-x:auto;padding:18px 16px 8px;background:var(--ground)}.ds-sw{font:inherit;flex:none;display:grid;justify-items:center;gap:7px;background:none;border:0;padding:4px 2px;min-width:58px;font-size:.84rem;font-weight:800;color:var(--muted);cursor:pointer}.ds-dot{width:50px;height:50px;border-radius:50%;background:var(--pg);box-shadow:0 0 0 3px var(--ground);transition:box-shadow .35s var(--ease),transform .35s var(--ease)}.ds-sw:hover .ds-dot{transform:scale(1.06)}.ds-on{color:var(--ink)}.ds-on .ds-dot{box-shadow:0 0 0 3px var(--ground),0 0 0 5.5px var(--ink)}"
     },
     {
-      "name": "Cloth cover card",
+      "name": "Recipe card",
       "kind": "card",
-      "refersTo": "cover",
-      "description": "A recipe card with no photo: course cloth, spine edge, blind-stamped frame, title stamped in foil at 230px and wider and pale below.",
-      "html": "<a class=\"ds-card\" href=\"#\"><div class=\"ds-cover\" style=\"--c:#3a3d1c\"><span class=\"ds-stamp\">Tomato, olive and basil salad</span></div><div class=\"ds-card-body\"><h3>Tomato, olive and basil salad</h3><p>Side · 10 min · Serves 2</p></div></a>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-card { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; display: block; width: 240px; color: var(--ink); text-decoration: none; } .ds-cover { position: relative; container-type: inline-size; aspect-ratio: 4 / 3.3; overflow: hidden; display: grid; place-items: center; border-radius: 2px 5px 5px 2px; background-color: var(--c, var(--cloth)); background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / .045) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(0 0 0 / .14) 0 1px, transparent 1px 3px); box-shadow: var(--lift); transition: transform .35s var(--ease), box-shadow .35s var(--ease); } .ds-cover::before { content: \"\"; position: absolute; inset: 9px 9px 9px 15px; border: 1px solid rgb(0 0 0 / .32); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06); } .ds-cover::after { content: \"\"; position: absolute; inset: 0 auto 0 0; width: 9px; background: linear-gradient(90deg, rgb(0 0 0 / .32), rgb(0 0 0 / .08) 70%, rgb(255 255 255 / .06)); } .ds-stamp { position: relative; margin: 0 22px 0 30px; font-family: \"Young Serif\", \"Iowan Old Style\", \"Palatino Linotype\", serif; font-weight: 400; font-size: clamp(1rem, 9.5cqi, 1.4rem); line-height: 1.15; text-align: center; text-wrap: balance; color: var(--on-cloth-soft); } @container (min-width: 230px) { .ds-stamp { font-size: 1.5rem; color: var(--foil); } } .ds-card:hover .ds-cover { transform: translateY(-3px); box-shadow: 0 2px 3px rgb(23 33 27 / .16), 0 14px 26px -10px rgb(23 33 27 / .35); } .ds-card-body { padding: .7rem .1rem 0; } .ds-card-body h3 { margin: 0; font-size: 1rem; font-weight: 650; line-height: 1.3; } .ds-card:hover h3 { text-decoration: underline; text-decoration-color: var(--ribbon); text-underline-offset: .2em; } .ds-card-body p { margin: .2rem 0 0; font-size: .84rem; color: var(--muted); } .ds-card:focus-visible { outline: 2px solid var(--ribbon); outline-offset: 2px; }"
+      "refersTo": "recipe-thumb",
+      "description": "Rounded photo or pigment tile, bold title, meta and key-ingredient pills.",
+      "html": "<article class=\"ds-card\"><div class=\"ds-thumb\" style=\"--pg:#7ea488\"></div><h3>Tomato, olive and basil salad</h3><p class=\"ds-meta\">10 min · serves 2</p><ul class=\"ds-keys\"><li><button class=\"ds-key\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg><span>tomato</span></button></li><li><button class=\"ds-key ds-lacking\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 6l12 12M18 6L6 18\"/></svg><span>basil</span></button></li></ul></article>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-card{width:220px;color:var(--ink)}.ds-thumb{position:relative;aspect-ratio:5/4;border-radius:18px;background:var(--pg-soft);overflow:hidden}.ds-thumb::before{content:\"\";position:absolute;inset:0;background:var(--pg);opacity:.6;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M16 8.5l7.5 7.5-7.5 7.5L8.5 16z' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M16 12.5l3.5 3.5-3.5 3.5-3.5-3.5z' fill='%23000' fill-opacity='.7'/%3E%3C/svg%3E\") 0 0/32px 32px;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M16 8.5l7.5 7.5-7.5 7.5L8.5 16z' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M16 12.5l3.5 3.5-3.5 3.5-3.5-3.5z' fill='%23000' fill-opacity='.7'/%3E%3C/svg%3E\") 0 0/32px 32px}.ds-card h3{margin:.6rem 0 0;font-size:1.02rem;font-weight:850;line-height:1.25}.ds-meta{margin:.15rem 0 0;font-size:.84rem;font-weight:650;color:var(--muted)}.ds-keys{list-style:none;margin:.5rem 0 0;padding:0;display:flex;flex-wrap:wrap;gap:5px}.ds-key{font:inherit;display:inline-flex;align-items:center;gap:.3rem;min-height:32px;padding:.15rem .6rem .15rem .45rem;border-radius:999px;border:1.5px solid var(--rule);background:var(--surface);color:var(--ink);font-size:.8rem;font-weight:750;cursor:pointer}.ds-key svg{color:var(--have)}.ds-lacking{border-style:dashed;border-color:var(--accent);background:transparent;color:var(--muted)}.ds-lacking span{text-decoration:line-through}.ds-lacking svg{color:var(--accent)}"
     },
     {
-      "name": "Spine label",
+      "name": "Search panel",
       "kind": "custom",
-      "refersTo": "spine-label",
-      "description": "Section heading as a small cloth label in the recipe's cloth, stamped in on-cloth, never foil.",
-      "html": "<h2 class=\"ds-spine-label\" style=\"--c:#1d2b48\">Ingredients</h2>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-spine-label { display: inline-block; font-family: \"Young Serif\", \"Iowan Old Style\", \"Palatino Linotype\", serif; font-weight: 400; font-size: 1.15rem; line-height: 1; padding: .5rem .9rem .45rem; margin: 0; border-radius: 1px 3px 3px 1px; background-color: var(--c, var(--cloth)); background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / .045) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgb(0 0 0 / .14) 0 1px, transparent 1px 3px); color: var(--on-cloth); }"
+      "refersTo": "pattern-ground",
+      "description": "Rounded block of the diamond pattern holding the fields.",
+      "html": "<div class=\"ds-panel\"><label class=\"ds-pf\"><input placeholder=\"Search recipes\"></label></div>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-panel{border-radius:24px;padding:14px;background:var(--pattern-ground) url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M16 8.5l7.5 7.5-7.5 7.5L8.5 16z' fill='none' stroke='%23b8532f' stroke-opacity='.6' stroke-width='1.3'/%3E%3Cpath d='M16 12.5l3.5 3.5-3.5 3.5-3.5-3.5z' fill='%23d49a37' fill-opacity='.8'/%3E%3Cg fill='%232f4fa3' fill-opacity='.55'%3E%3Ccircle cx='0' cy='0' r='2'/%3E%3Ccircle cx='32' cy='0' r='2'/%3E%3Ccircle cx='0' cy='32' r='2'/%3E%3Ccircle cx='32' cy='32' r='2'/%3E%3C/g%3E%3C/svg%3E\") 0 0/32px 32px}.ds-pf input{font:inherit;font-weight:650;width:100%;min-height:48px;padding:.6em .9em;background:var(--surface);color:var(--ink);border:1.5px solid transparent;border-radius:16px}.ds-pf input:focus{outline:none;border-color:var(--accent)}"
     },
     {
-      "name": "Slip",
-      "kind": "card",
-      "refersTo": "slip",
-      "description": "A tipped-in slip for the original's tips and signed notes.",
-      "html": "<div class=\"ds-slip\"><p>Salt the water well; it is the only seasoning the pasta gets.</p><p class=\"ds-sig\">Sam, 4 Oct 2026</p></div>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-slip { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; background: var(--leaf); color: var(--ink); border: 1px solid var(--rule); padding: .9rem 1.1rem; box-shadow: 0 1px 1px rgb(23 33 27 / .08), 0 3px 10px -4px rgb(23 33 27 / .18); line-height: 1.55; } .ds-slip p { margin: 0 0 .35rem; max-width: 70ch; } .ds-slip p:last-child { margin: 0; } .ds-sig { font-size: .82rem; color: var(--muted); }"
+      "name": "Cooking Back and Next",
+      "kind": "button",
+      "refersTo": "cook-next",
+      "description": "The 64px pill pair at the foot of cooking mode; Next is terracotta.",
+      "html": "<div class=\"ds-nav\"><button class=\"ds-prev\">Back</button><button class=\"ds-next\">Next</button></div>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-nav{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;padding:10px 12px;background:var(--surface);box-shadow:0 -1px 0 var(--rule)}.ds-nav button{font:inherit;min-height:64px;font-size:1.15rem;font-weight:850;border-radius:999px;cursor:pointer}.ds-prev{border:2px solid var(--rule-strong);background:var(--surface);color:var(--ink)}.ds-next{border:0;background:var(--accent);color:var(--on-accent)}.ds-next:hover{background:var(--accent-deep)}.ds-nav button:focus-visible{outline:2.5px solid #2f4fa3;outline-offset:2px}"
     },
     {
-      "name": "Cooking-mode step",
+      "name": "Cooking step",
       "kind": "custom",
       "refersTo": "cook",
-      "description": "One step per screen at poster size, sized by step length; done steps struck through with a 3px ink bar.",
-      "html": "<div class=\"ds-cook\"><p class=\"ds-count\"><b>Step 1</b> of 5</p><p class=\"ds-cook-text ds-short\">Bring a large pan of well-salted water to the boil.</p><p class=\"ds-time\">About 10 min</p></div>",
-      "css": ":host { --cloth: #1f3a2b; --foil: #e0bf55; --on-cloth: #eef0e6; --on-cloth-soft: #c9cfbf; --ribbon: #8a2232; --ribbon-deep: #6e1a27; --on-ribbon: #ffffff; --page: #f6f7f3; --leaf: #ffffff; --ink: #17211b; --muted: #55604f; --rule: #d6dbcf; --rule-strong: #b9c1b0; --lift: 0 1px 2px rgb(23 33 27 / .14), 0 6px 18px -6px rgb(23 33 27 / .22); --ease: cubic-bezier(.16, 1, .3, 1); } .ds-cook { font-family: system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", sans-serif; background: var(--page); color: var(--ink); padding: 1.2rem; max-width: 42rem; } .ds-count { margin: 0 0 1rem; color: var(--muted); font-weight: 600; } .ds-count b { font-weight: 750; color: var(--ink); font-size: 1.25rem; } .ds-cook-text { margin: 0; font-size: clamp(1.8rem, 7.8vw, 3rem); line-height: 1.22; font-weight: 500; letter-spacing: -.01em; text-wrap: pretty; } .ds-cook-text.ds-mid { font-size: clamp(2.1rem, 9.2vw, 3.5rem); line-height: 1.16; } .ds-cook-text.ds-short { font-size: clamp(2.5rem, 11vw, 4.2rem); line-height: 1.12; } .ds-time { margin: 1.1rem 0 0; font-size: 1.15rem; color: var(--muted); font-weight: 600; }"
+      "description": "One step per screen at poster size.",
+      "html": "<div class=\"ds-cook\"><p class=\"ds-count\"><b>Step 1</b> of 5</p><p class=\"ds-text\">Bring a large pan of well-salted water to the boil.</p><p class=\"ds-time\">About 10 min</p></div>",
+      "css": ":host{--ground:#f6efe6;--surface:#fffaf4;--ink:#3b2a21;--muted:#74594a;--rule:#e8d9c8;--rule-strong:#cfb59d;--accent:#b4502c;--accent-deep:#963f20;--on-accent:#fff;--pattern-ground:#efd9c3;--pg:#b8532f;--pg-soft:color-mix(in oklab,var(--pg) 22%,var(--surface));--have:#3f6b4e;--ease:cubic-bezier(.16,1,.3,1);font-family:Nunito,system-ui,sans-serif;}.ds-cook{background:var(--ground);color:var(--ink);padding:1.2rem;max-width:42rem}.ds-count{margin:0 0 1rem;color:var(--muted);font-weight:750}.ds-count b{font-weight:900;color:var(--ink);font-size:1.3rem}.ds-text{margin:0;font-size:clamp(2.5rem,11vw,4.2rem);line-height:1.12;font-weight:700;letter-spacing:-.01em}.ds-time{margin:1.1rem 0 0;font-size:1.15rem;color:var(--muted);font-weight:750}"
     }
   ],
   "narrative": {
-    "northStar": "The well-used clothbound cookbook",
-    "overview": "Every screen is part of one cloth-bound book. Saturated bookcloth with a fine woven texture frames the screen: the top bar is the spine, each recipe has a cover, and section names are small cloth spine labels. Names are stamped on the cloth in Young Serif, in gold foil when they are large enough and blind-stamped (pale, no gold) when they are not. The pages between the covers are a cool near-white with green-black ink, set entirely in the system sans with tabular figures. A printed two-colour endpaper sits behind the search box, and thumb-index tabs, one cloth per course, file the collection.\n\nOne oxblood silk ribbon marks where you are. It hangs from the tab you are on, sits in the page at the step you reached, is the button that starts or resumes cooking, slides down the right edge of cooking mode, and is the Next button there. Cooking mode itself drops the book furniture down to a cloth bar and puts one step on the page at poster size, readable at arm's length.\n\nThe system rejects the cream-page, serif-everywhere recipe blog and the white photo-grid recipe site. Photos are never tinted or cropped into tiles: they are tipped-in plates in a thin white mount.",
+    "northStar": "The Clay Kitchen Shelf",
+    "overview": "A clean, soft, rounded book in the colours of Moroccan clay: a sand ground, terracotta for the one accent, and six clay pigments (ochre, mint, rose clay, majorelle blue, olive, terracotta) that colour the courses. Nunito is the only typeface, heavy (850 to 900) for names and calm (500 to 650) for reading. Photos are shown plainly, with rounded corners and nothing else around them. Courses are filtered by round pigment swatches that scroll sideways, and recipes sit in a two-column grid on a phone.\n\nThe diamond-and-dot pattern stays, but in one place: behind the search panel (and the sign-in screen and the Add recipes header). Recipes without a photo wear the same pattern as a tile in their course pigment. Everything else is flat sand, with soft rounded shapes and a single soft shadow for things that lift.\n\nConfirmed rejections: the clothbound look, heavy materials, gold foil, literary serif wordmarks, book-style photo frames.",
     "keyCharacteristics": [
-      "Bookcloth (woven texture over a saturated field) frames every screen; course cloths colour each recipe.",
-      "Young Serif appears only on cloth; everything on the page is system sans with tabular figures.",
-      "Gold foil only at 24px and up; smaller stamped text is pale.",
-      "The oxblood ribbon means \"you are here\" and nothing else of substance.",
-      "Done things are struck through with a solid ink bar, never greyed out.",
-      "Photos are plates pasted in whole, with a white mount and a lift shadow."
+      "One typeface, Nunito, in light and dark modes alike.",
+      "Lowercase wordmark \"recipe book.\" in 900 weight with a terracotta full stop.",
+      "Six course pigments; a recipe keeps one pigment across card, intro panel, step numbers and cooking bar.",
+      "Everything interactive is a pill or a rounded rectangle; ticks and crosses mark ingredient state.",
+      "Dark mode is a warm brown-black with lifted pigments, not an inversion."
     ],
     "rules": [
       {
-        "name": "The Ribbon Rule",
-        "body": "Oxblood marks where you are and where your focus is. It appears as the bookmark hanging from the active tab (course index and Steps/Flowchart alike), the ribbon left at the current step, the Start cooking / Carry on cooking ribbon, the cooking-mode rail mark and the Next button; and, as the focus and pointer colour, the focus ring, text caret, selection, link hover underline and the keep-awake checkbox. It is never a course cloth, a heading colour or decoration.",
+        "name": "The Pigment Per Course Rule",
+        "body": "A recipe takes one pigment from its course and carries it through its card tile, intro panel, step numbers, section dots and cooking bar. Never mix two.",
         "section": "colors"
       },
       {
-        "name": "The Cloth Carries the Course Rule",
-        "body": "A recipe takes one cloth from the course map and uses it everywhere that recipe is bound: card, cover, spine labels, step numbers, method tabs, cooking-mode bar. Never mix two course cloths in one recipe.",
+        "name": "The One Accent Rule",
+        "body": "Terracotta is the action and focus colour. A course pigment is identity, never a button.",
         "section": "colors"
       },
       {
-        "name": "The Stamped-on-Cloth Rule",
-        "body": "Young Serif appears only on cloth. Headings on the page ground, the cooking-mode step, the drawer heading and the end-of-recipe heading are system sans at 500 to 750.",
+        "name": "The One Face Rule",
+        "body": "Nunito only, in every mode and on every surface.",
         "section": "typography"
       },
       {
-        "name": "The Foil Floor Rule",
-        "body": "Gold foil only at 24px and up. Smaller stamped text on cloth is on-cloth or on-cloth soft: spine labels, tabs, step numbers, the cooking-mode bar title and the \"est.\" mark are never gold. Card titles switch from blind stamp to foil through a container query at 230px card width.",
+        "name": "The Lowercase Wordmark Rule",
+        "body": "The name is lowercase with a terracotta dot; everything else is sentence case.",
         "section": "typography"
       },
       {
-        "name": "The Pressed, Not Raised, Rule",
-        "body": "Detail inside cloth is pressed in (frames, folds, spine edge); only whole objects lift off the page.",
+        "name": "The Flat At Rest Rule",
+        "body": "Cards and photos carry no shadow until hovered.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do frame screens and recipe identity with bookcloth: the woven texture over the cloth colour, always together.",
-      "Do bind each recipe in its course cloth and carry that cloth through cover, spine labels, step numbers, tabs and the cooking-mode bar.",
-      "Do keep oxblood for where you are and where your focus is: active-tab bookmark, current step, start or carry on cooking, the cooking-mode rail mark, the Next button, focus and selection.",
-      "Do use gold foil only at 24px and up; below that, stamp in on-cloth or on-cloth soft.",
-      "Do strike done ingredients and steps through with a solid ink bar (2px on the page, 3px in cooking mode).",
-      "Do paste photos in whole, in a white mount with a shadow, and give photo-less recipes a cloth cover with the title stamped.",
-      "Do size cooking-mode step text by step length, using the three poster sizes.",
-      "Do use the house ease (cubic-bezier(.16, 1, .3, 1)) for slides and lifts, and zero all motion under reduced motion."
+      "**Do** set every piece of text in Nunito; use weight (500, 650, 800, 900) for hierarchy.",
+      "**Do** give each recipe a single course pigment and show it as a swatch, a tile, a tint and a number ring.",
+      "**Do** keep the diamond pattern to the search panel, the sign-in screen, the Add recipes header and photo-less tiles.",
+      "**Do** show photos plainly with rounded corners and no frame.",
+      "**Do** mark done and lacking by strike-through and a dashed or ink fill, with the tick or cross, not by fading alone.",
+      "**Do** keep touch targets at least 32px (keys), 46px (buttons), 64px (cooking Back/Next), and honour `prefers-reduced-motion`.",
+      "**Do** use the one ease, `cubic-bezier(.16, 1, .3, 1)`, for lifts and slides."
     ],
     "donts": [
-      "Don't set Young Serif on the page ground; on the page, everything is system sans.",
-      "Don't use oxblood as a course cloth, a heading colour or decoration.",
-      "Don't grey out done items; strike them through.",
-      "Don't tint, filter or crop photos into uniform tiles.",
-      "Don't round corners beyond the spine radii; no pills.",
-      "Don't build the cream-page, serif-everywhere recipe blog or the white photo-grid recipe site."
+      "**Don't** bring back the clothbound look: no woven textures, gold foil, ribbons, blind-stamped frames or spine labels.",
+      "**Don't** use a serif or a literary wordmark.",
+      "**Don't** frame or mount photos like a book plate.",
+      "**Don't** use a course pigment as a button colour, or terracotta as a course.",
+      "**Don't** add hard shadows, uppercase eyebrow labels or kickers."
     ]
   }
 }
