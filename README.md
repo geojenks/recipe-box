@@ -1,6 +1,8 @@
-# Recipe Box
+# Recipe book
 
 A private recipe website for a small group. People drop recipe files (PDFs, photos of cookbook pages or handwritten cards, Google Docs, Word files) into a shared Google Drive folder. Once an hour a Google Apps Script job sends new files to Claude, which turns each one into a uniform structured recipe. The website (GitHub Pages) reads those recipes using each person's own Google sign-in, so only people the folder is shared with can see anything.
+
+The site is called "Recipe book". The Drive folder, the notes sheet, the Apps Script project and the Cloud project are still called "Recipe Box", and the steps below use those names.
 
 **This repository holds no recipes.** It only holds code and the IDs of the Drive files, and the IDs are useless without access to the folder.
 
@@ -10,6 +12,8 @@ Features:
 - A flowchart of the steps that shows what can be done at the same time.
 - Shared notes on each recipe, with each person's name on their notes.
 - A "Keep screen on" switch for cooking from your phone.
+- Cooking mode: one step per screen in large type, readable at arm's length, with the ingredients a tap away. It keeps the screen on and remembers your place.
+- People who can only view the folder see notes but no note box, and the Add recipes page tells them who to ask for access.
 
 ```
 Shared Drive folder "Recipe Box"   <- everyone uploads here (subfolders OK)

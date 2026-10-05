@@ -1,7 +1,7 @@
-// Recipe Box front end. Talks directly to Google Drive and Sheets with the
+// Recipe book front end. Talks directly to Google Drive and Sheets with the
 // signed-in user's own token, so it only works for people the folder is shared with.
 
-const CFG = { siteTitle: 'Recipe Box', ...window.RECIPE_BOX_CONFIG };
+const CFG = { siteTitle: 'Recipe book', ...window.RECIPE_BOX_CONFIG };
 const DEMO = new URLSearchParams(location.search).has('demo');
 const SCOPES = [
   'openid', 'email', 'profile',
@@ -9,6 +9,8 @@ const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
 ].join(' ');
 const TOKEN_KEY = 'rb-token';
+const TICKS_KEY = 'rb-ticks';
+const TICKS_TTL = 12 * 3600_000; // ticks older than this belong to a previous cook
 
 const state = {
   token: null,
@@ -17,6 +19,7 @@ const state = {
   byId: new Map(),
   ingredients: new Map(), // canonical -> {name, staple, recipeIds:Set}
   notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]
+  canNote: null,          // can this user write to the notes sheet?
   photos: new Map(),      // fileId -> Promise<objectURL|null>
   search: { text: '', ingredients: [], course: '' },
 };
@@ -28,6 +31,8 @@ document.title = CFG.siteTitle;
 // ---------- helpers ----------
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const icon = (name) => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const canon = (item) => (item.canonical || item.name).toLowerCase().trim();
 
 function fmtMinutes(m) {
   if (m == null) return null;
@@ -50,6 +55,42 @@ function banner(html, kind = 'info') {
   el.innerHTML = html;
   el.hidden = !html;
 }
+
+// Each course is bound in its own cloth; unknown courses get one by hash.
+const COURSE_CLOTHS = {
+  main: 1, dinner: 1, lunch: 2, starter: 2, soup: 2, side: 5, salad: 5, vegetable: 5,
+  dessert: 3, pudding: 3, sweet: 3, baking: 4, bread: 4, cake: 4, breakfast: 4, brunch: 4,
+  drink: 2, sauce: 5, snack: 5, preserve: 3,
+};
+function clothFor(course) {
+  if (!course) return 'cloth-0';
+  const key = course.toLowerCase().replace(/s$/, '');
+  if (key in COURSE_CLOTHS) return `cloth-${COURSE_CLOTHS[key]}`;
+  let h = 0;
+  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return `cloth-${1 + (h % 5)}`;
+}
+
+// ---------- ticks: shared by the recipe page and cooking mode ----------
+
+const ticks = (() => {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(TICKS_KEY) || '{}'); } catch { /* storage blocked */ }
+  for (const [id, t] of Object.entries(all)) if (!(Date.now() - t.at < TICKS_TTL)) delete all[id];
+  return {
+    get(id) { return all[id] ??= { ing: [], steps: [], pos: 0, at: Date.now() }; },
+    has(id, kind, key) { return this.get(id)[kind].includes(key); },
+    set(id, kind, key, on) {
+      const t = this.get(id);
+      t[kind] = t[kind].filter((k) => k !== key);
+      if (on) t[kind].push(key);
+      t.at = Date.now();
+      this.save();
+    },
+    setPos(id, pos) { const t = this.get(id); t.pos = pos; t.at = Date.now(); this.save(); },
+    save() { try { localStorage.setItem(TICKS_KEY, JSON.stringify(all)); } catch { /* fine */ } },
+  };
+})();
 
 // ---------- auth ----------
 
@@ -93,13 +134,22 @@ async function waitForGsi() {
   if (!window.google?.accounts?.oauth2) throw new Error('Could not load Google sign-in. Check your connection or ad blocker.');
 }
 
+function setSignedIn(on) {
+  document.getElementById('signout').hidden = !on || DEMO;
+  document.querySelector('.topbar nav a').hidden = !on;
+}
+
 function showSignIn(message = '') {
+  leaveCooking();
+  setSignedIn(false);
   app.innerHTML = `
     <section class="signin">
-      <h1>${esc(CFG.siteTitle)}</h1>
-      <p>Our shared recipes. Sign in with the Google account the recipe folder is shared with.</p>
-      ${message ? `<p class="error">${esc(message)}</p>` : ''}
-      <button class="primary" id="signin">Sign in with Google</button>
+      <div class="cover cloth frame">
+        <h1 class="foil">${esc(CFG.siteTitle)}</h1>
+        <p>Our shared recipes. Sign in with the Google account the recipe folder is shared with.</p>
+        ${message ? `<p class="error">${esc(message)}</p>` : ''}
+        <button class="plate-button" id="signin">Sign in with Google</button>
+      </div>
     </section>`;
   document.getElementById('signin').onclick = async () => {
     try {
@@ -116,7 +166,7 @@ function signOut() {
   try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
   state.token = null;
   state.user = null;
-  document.getElementById('signout').hidden = true;
+  state.canNote = null;
   showSignIn();
 }
 document.getElementById('signout').onclick = signOut;
@@ -145,6 +195,7 @@ async function gfetch(url, opts = {}, retry = true) {
 // ---------- data: Google APIs (or demo files) ----------
 
 const driveFile = (id) => `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`;
+const driveMeta = (id, fields) => `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true&fields=${encodeURIComponent(fields)}`;
 const sheetsBase = () => `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(CFG.sheetId)}`;
 
 async function loadRecipes() {
@@ -161,7 +212,7 @@ function buildIngredientIndex() {
   const map = new Map();
   for (const r of state.recipes) {
     for (const item of allItems(r)) {
-      const key = (item.canonical || item.name).toLowerCase().trim();
+      const key = canon(item);
       if (!map.has(key)) map.set(key, { name: key, stapleVotes: 0, uses: 0, recipeIds: new Set() });
       const e = map.get(key);
       e.uses++;
@@ -221,6 +272,19 @@ async function loadNotes() {
     .filter((n) => n.id && n.text);
 }
 
+/** Everyone can read the notes sheet, but only editors can add to it. */
+async function canWriteNotes() {
+  if (DEMO) return true;
+  if (state.canNote == null) {
+    try {
+      state.canNote = !!(await (await gfetch(driveMeta(CFG.sheetId, 'capabilities(canEdit)'))).json()).capabilities?.canEdit;
+    } catch {
+      return true; // can't tell; let them try, and a refused save says why
+    }
+  }
+  return state.canNote;
+}
+
 async function addNote(recipeId, text) {
   const note = {
     id: crypto.randomUUID(), recipeId, timestamp: new Date().toISOString(),
@@ -259,6 +323,17 @@ async function loadStatus() {
   return (await res.json()).values || [];
 }
 
+/** Can this user upload to the recipe folder, and who owns it? */
+async function inboxAccess() {
+  if (DEMO) return { canAdd: true, owners: [] };
+  try {
+    const f = await (await gfetch(driveMeta(CFG.inboxFolderId, 'capabilities(canAddChildren),owners(displayName)'))).json();
+    return { canAdd: !!f.capabilities?.canAddChildren, owners: (f.owners || []).map((o) => o.displayName).filter(Boolean) };
+  } catch {
+    return { canAdd: true, owners: [] };
+  }
+}
+
 // ---------- search ----------
 
 function matchingRecipes() {
@@ -266,8 +341,8 @@ function matchingRecipes() {
   const words = text.toLowerCase().split(/\s+/).filter(Boolean);
   return state.recipes.filter((r) => {
     if (course && r.course !== course) return false;
-    const canon = new Set(allItems(r).map((i) => (i.canonical || i.name).toLowerCase().trim()));
-    if (!ingredients.every((i) => canon.has(i))) return false;
+    const have = new Set(allItems(r).map(canon));
+    if (!ingredients.every((i) => have.has(i))) return false;
     if (!words.length) return true;
     const hay = [r.title, r.description, r.cuisine, r.course, r.author, r.book, r.sourceCredit, ...r.tags, ...allItems(r).map((i) => i.name)]
       .join(' ').toLowerCase();
@@ -282,7 +357,7 @@ function coIngredientSuggestions(recipes, limit = 12) {
   for (const r of recipes) {
     const seen = new Set();
     for (const item of allItems(r)) {
-      const key = (item.canonical || item.name).toLowerCase().trim();
+      const key = canon(item);
       if (seen.has(key) || selected.has(key) || state.ingredients.get(key)?.staple) continue;
       seen.add(key);
       counts.set(key, (counts.get(key) || 0) + 1);
@@ -297,10 +372,12 @@ function recipeCard(r) {
   const t = fmtMinutes(totalMinutes(r));
   return `
     <a class="card" href="#/r/${encodeURIComponent(r.id)}">
-      <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}"><span>${esc(r.title.slice(0, 1))}</span></div>
+      <div class="cover-thumb cloth ${clothFor(r.course)} frame ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}">
+        <span class="stamp" aria-hidden="true">${esc(r.title)}</span>
+      </div>
       <div class="card-body">
         <h3>${esc(r.title)}</h3>
-        ${r.author || r.book ? `<p class="meta by">${esc([r.author, r.book].filter(Boolean).join(' · '))}</p>` : ''}
+        ${r.author || r.book ? `<p class="meta">${esc([r.author, r.book].filter(Boolean).join(' · '))}</p>` : ''}
         <p class="meta">${[r.course, t, r.servings && `Serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
       </div>
     </a>`;
@@ -332,40 +409,61 @@ function hydratePhotos(root) {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
-      recipePhotoUrl(state.byId.get(e.target.dataset.photo)).then((url) => {
+      const r = state.byId.get(e.target.dataset.photo);
+      recipePhotoUrl(r).then((url) => {
         if (!url) return;
-        // Whole photo, scaled to fit; on cards a blurred copy fills the spare space.
-        const fill = e.target.classList.contains('thumb') && !e.target.classList.contains('page');
-        e.target.innerHTML = `${fill ? `<img class="backdrop" src="${esc(url)}" alt="">` : ''}<img class="photo" src="${esc(url)}" alt="" loading="lazy">`;
+        // Photos are pasted in whole and never tinted; on a cover they sit in a thin mount.
+        const img = document.createElement('img');
+        img.className = 'photo';
+        img.src = url;
+        img.alt = e.target.classList.contains('plate') ? `Photo of ${r.title}` : '';
+        e.target.append(img);
+        e.target.classList.add('has-photo');
+        if (e.target.classList.contains('plate')) img.onclick = () => zoom(url, img.alt);
       });
     }
   }, { rootMargin: '200px' });
   root.querySelectorAll('[data-photo]').forEach((el) => state.byId.get(el.dataset.photo)?.photoFileId && io.observe(el));
 }
 
+function zoom(url, alt) {
+  const z = document.createElement('div');
+  z.className = 'zoom';
+  z.innerHTML = `<img src="${esc(url)}" alt="${esc(alt)}">`;
+  const close = () => { z.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  z.onclick = close;
+  document.addEventListener('keydown', onKey);
+  document.body.append(z);
+}
+
 function renderHome() {
   const courses = [...new Set(state.recipes.map((r) => r.course).filter(Boolean))].sort();
   const allIngredients = [...state.ingredients.values()].filter((e) => !e.staple).map((e) => e.name).sort();
   app.innerHTML = `
-    <section class="search">
-      <input id="q" type="search" placeholder="Search recipes…" value="${esc(state.search.text)}" autocomplete="off">
-      <div class="ing-search">
-        <input id="ing" list="ing-list" placeholder="Add an ingredient you have…" autocomplete="off">
+    <section class="finder endpaper">
+      <div class="bookplate">
+        <label class="field"><span>Search by name, book, author or cuisine</span>
+          <input id="q" type="search" placeholder="Search recipes" value="${esc(state.search.text)}" autocomplete="off"></label>
+        <label class="field"><span>Ingredients you have</span>
+          <input id="ing" list="ing-list" placeholder="Add an ingredient" autocomplete="off"></label>
         <datalist id="ing-list">${allIngredients.map((i) => `<option value="${esc(i)}">`).join('')}</datalist>
+        <div id="chips" class="chips"></div>
+        <div id="suggest" class="suggest"></div>
       </div>
-      <div id="chips" class="chips"></div>
-      <div class="filters">
-        <select id="course"><option value="">All courses</option>${courses.map((c) => `<option ${c === state.search.course ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
-      </div>
-      <div id="suggest" class="suggest"></div>
     </section>
-    <p id="count" class="muted"></p>
-    <section id="grid" class="grid"></section>`;
+    <section class="shelf">
+      <nav class="thumb-index" aria-label="Courses">
+        ${[['', 'All'], ...courses.map((c) => [c, c])].map(([value, label]) =>
+          `<button class="tab cloth ${value ? clothFor(value) : 'cloth-0'}" data-course="${esc(value)}">${esc(label)}</button>`).join('')}
+      </nav>
+      <p id="count" class="count" aria-live="polite"></p>
+      <div id="grid" class="grid"></div>
+    </section>`;
 
   const q = document.getElementById('q');
   const ing = document.getElementById('ing');
   q.oninput = () => { state.search.text = q.value; update(); };
-  document.getElementById('course').onchange = (e) => { state.search.course = e.target.value; update(); };
   const addIngredient = (name) => {
     const key = name.toLowerCase().trim();
     if (key && !state.search.ingredients.includes(key)) state.search.ingredients.push(key);
@@ -377,98 +475,155 @@ function renderHome() {
 
   function update() {
     const list = matchingRecipes();
+    app.querySelectorAll('[data-course]').forEach((t) => {
+      const on = t.dataset.course === state.search.course;
+      t.classList.toggle('on', on);
+      t.setAttribute('aria-pressed', on);
+    });
     document.getElementById('chips').innerHTML = state.search.ingredients
-      .map((i) => `<button class="chip on" data-remove="${esc(i)}">${esc(i)} ✕</button>`).join('');
+      .map((i) => `<button class="label on" data-remove="${esc(i)}" aria-label="Remove ${esc(i)}">${esc(i)} ${icon('close')}</button>`).join('');
     const sugg = state.search.ingredients.length ? coIngredientSuggestions(list) : [];
     document.getElementById('suggest').innerHTML = sugg.length
-      ? `<span class="muted">Goes well with:</span> ${sugg.map(([n, c]) => `<button class="chip" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}`
+      ? `<span>Goes well with</span> ${sugg.map(([n, c]) => `<button class="label" data-add="${esc(n)}">${esc(n)} <small>${c}</small></button>`).join('')}`
       : '';
-    document.getElementById('count').textContent = state.recipes.length
+    const filtered = state.search.text || state.search.ingredients.length || state.search.course;
+    document.getElementById('count').textContent = filtered
       ? `${list.length} of ${state.recipes.length} recipes`
-      : 'No recipes yet. Add some via “Add recipes”.';
+      : `${state.recipes.length} recipes`;
     const grid = document.getElementById('grid');
-    grid.innerHTML = list.map(recipeCard).join('');
-    hydratePhotos(grid);
+    if (!state.recipes.length) {
+      grid.innerHTML = '<p class="empty">No recipes yet. <a href="#/inbox">Add the first one</a>.</p>';
+    } else if (!list.length) {
+      grid.innerHTML = '<p class="empty">Nothing matches all of that. <button class="link" data-clear>Clear the search</button></p>';
+    } else {
+      grid.innerHTML = list.map(recipeCard).join('');
+      hydratePhotos(grid);
+    }
   }
   app.onclick = (e) => {
     const rm = e.target.closest('[data-remove]');
     const add = e.target.closest('[data-add]');
+    const course = e.target.closest('[data-course]');
     if (rm) { state.search.ingredients = state.search.ingredients.filter((i) => i !== rm.dataset.remove); update(); }
     if (add) addIngredient(add.dataset.add);
+    if (course) { state.search.course = course.dataset.course; update(); }
+    if (e.target.closest('[data-clear]')) {
+      state.search = { text: '', ingredients: [], course: '' };
+      q.value = '';
+      update();
+    }
   };
+  app.onchange = null;
   update();
+}
+
+function ingredientLine(i) {
+  return `<b>${esc([i.quantity, i.unit].filter(Boolean).join(' '))}</b> ${esc(i.name)}${i.preparation ? `, <i>${esc(i.preparation)}</i>` : ''}${i.optional ? ' <small class="muted">(optional)</small>' : ''}`;
+}
+
+/** Ingredient checklist; ticks are shared with cooking mode. */
+function ingredientList(r) {
+  return r.ingredientGroups.map((g, gi) => `
+    ${g.name ? `<h3 class="group-name">${esc(g.name)}</h3>` : ''}
+    <ul class="checklist">${g.items.map((i, ii) => `
+      <li class="${state.ingredients.get(canon(i))?.staple ? 'staple' : ''}">
+        <label class="tick"><input type="checkbox" data-tick="ing:${gi}-${ii}" ${ticks.has(r.id, 'ing', `${gi}-${ii}`) ? 'checked' : ''}>
+        <span>${ingredientLine(i)}</span></label>
+      </li>`).join('')}
+    </ul>`).join('');
+}
+
+function onTick(r) {
+  return (e) => {
+    const box = e.target.closest('[data-tick]');
+    if (!box) return;
+    const [kind, key] = box.dataset.tick.split(':');
+    ticks.set(r.id, kind, key, box.checked);
+  };
 }
 
 function renderRecipe(id) {
   const r = state.byId.get(id);
   if (!r) { app.innerHTML = '<p class="center">Recipe not found. <a href="#/">Back to all recipes</a></p>'; return; }
-  const est = r.timesAreEstimated ? ' <abbr title="Estimated, not stated in the original">est.</abbr>' : '';
+  const cloth = clothFor(r.course);
+  const t = ticks.get(r.id);
+  const started = t.pos > 0 || t.steps.length > 0;
+  const est = r.timesAreEstimated ? '<abbr title="Estimated, not stated in the original">est.</abbr>' : '';
   const facts = [
     ['Prep', fmtMinutes(r.prepMinutes)], ['Cook', fmtMinutes(r.cookMinutes)],
     ['Total', fmtMinutes(totalMinutes(r))], ['Serves', r.servings],
   ].filter(([, v]) => v);
+  const cookHref = `#/r/${encodeURIComponent(r.id)}/cook`;
 
   app.innerHTML = `
     <article class="recipe">
-      <a href="#/" class="back">← All recipes</a>
-      ${r.photoKind === 'dish' ? `<div class="hero" data-photo="${esc(r.id)}"></div>` : ''}
-      <h1>${esc(r.title)}</h1>
-      ${byline(r)}
-      <p class="lede">${esc(r.description)}</p>
-      <dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>
-      <p class="tags">${[r.course, r.cuisine, ...r.tags].filter(Boolean).map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</p>
+      <a href="#/" class="back">${icon('back')} All recipes</a>
+      <header class="recipe-head">
+        <div class="recipe-cover cloth ${cloth} frame">
+          <h1 class="foil">${esc(r.title)}</h1>
+          ${byline(r)}
+          ${r.description ? `<p class="lede">${esc(r.description)}</p>` : ''}
+          ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>` : ''}
+          ${r.steps.length ? `<a class="ribbon" href="${cookHref}">${icon('ribbon')} ${started ? `Carry on cooking, step ${Math.min(t.pos, r.steps.length - 1) + 1}` : 'Start cooking'}</a>` : ''}
+        </div>
+        ${r.photoKind === 'dish' && r.photoFileId ? `<figure class="plate" data-photo="${esc(r.id)}"></figure>` : ''}
+      </header>
+      <ul class="tags">${[r.course, r.cuisine, ...r.tags].filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
 
       <div class="columns">
         <section class="ingredients">
-          <h2>Ingredients</h2>
-          ${r.ingredientGroups.map((g) => `
-            ${g.name ? `<h3>${esc(g.name)}</h3>` : ''}
-            <ul class="checklist">${g.items.map((i) => `
-              <li class="${state.ingredients.get((i.canonical || i.name).toLowerCase().trim())?.staple ? 'staple' : ''}">
-                <label><input type="checkbox">
-                <span><b>${esc([i.quantity, i.unit].filter(Boolean).join(' '))}</b> ${esc(i.name)}${i.preparation ? `, <i>${esc(i.preparation)}</i>` : ''}${i.optional ? ' <small>(optional)</small>' : ''}</span></label>
-              </li>`).join('')}
-            </ul>`).join('')}
+          <h2 class="spine-label cloth ${cloth}">Ingredients</h2>
+          ${ingredientList(r)}
         </section>
 
         <section class="method">
-          <div class="tabs" role="tablist">
-            <button role="tab" class="tab on" data-tab="steps">Steps</button>
-            <button role="tab" class="tab" data-tab="flow">Flowchart</button>
+          <div class="method-tabs" role="tablist">
+            <button role="tab" class="tab cloth ${cloth} on" aria-selected="true" data-tab="steps">Steps</button>
+            <button role="tab" class="tab cloth ${cloth}" aria-selected="false" data-tab="flow">Flowchart</button>
             <label class="awake"><input type="checkbox" id="awake"> Keep screen on</label>
           </div>
-          <ol class="steps" id="steps">${r.steps.map((s) => `
-            <li id="step-${esc(s.id)}"><label><input type="checkbox"><span>${esc(s.text)}${s.minutes ? ` <small class="muted">(${fmtMinutes(s.minutes)})</small>` : ''}</span></label></li>`).join('')}
+          <ol class="steps" id="steps">${r.steps.map((s, i) => `
+            <li class="${started && i === t.pos ? 'here' : ''}">
+              <label class="tick"><input type="checkbox" data-tick="steps:${esc(s.id)}" ${t.steps.includes(s.id) ? 'checked' : ''}>
+                <span class="num cloth ${cloth}">${i + 1}</span>
+                <span class="txt">${esc(s.text)}${s.minutes ? ` <span class="step-time">(${fmtMinutes(s.minutes)})</span>` : ''}</span></label>
+            </li>`).join('')}
           </ol>
           <div id="flow" class="flow" hidden><p class="muted">Drawing…</p></div>
         </section>
       </div>
 
-      ${r.sourceNotes.length ? `<section><h2>From the original</h2><ul>${r.sourceNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></section>` : ''}
+      ${r.sourceNotes.length ? `<section>
+        <h2 class="spine-label cloth ${cloth}">From the original</h2>
+        <div class="slip"><ul class="tips">${r.sourceNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>
+      </section>` : ''}
 
       <section class="notes">
-        <h2>Our notes</h2>
+        <h2 class="spine-label cloth ${cloth}">Our notes</h2>
         <div id="notes"><p class="muted">Loading notes…</p></div>
-        <form id="note-form">
-          <textarea id="note-text" rows="3" placeholder="Add a note for everyone: tweaks, what worked, what to try next time…" required></textarea>
-          <button class="primary" type="submit">Add note</button>
+        <form id="note-form" hidden>
+          <label class="vh" for="note-text">Add a note</label>
+          <textarea id="note-text" rows="3" placeholder="Add a note for everyone: tweaks, what worked, what to try next time" required></textarea>
+          <button class="button" type="submit">Add note</button>
         </form>
+        <p id="note-readonly" class="readonly-note" hidden>You can read notes but not add them. To add notes, ask whoever owns the shared recipe folder for edit access to the notes sheet.</p>
       </section>
 
-      <p class="source muted">
-        ${!r.author && !r.book && r.sourceCredit ? `Source: ${esc(r.sourceCredit)}<br>` : ''}
-        Added${r.addedBy ? ` by ${esc(r.addedBy)}` : ''} on ${new Date(r.addedAt).toLocaleDateString()}
-        ${r.sourceFileId && !DEMO ? ` · <a href="https://drive.google.com/file/d/${encodeURIComponent(r.sourceFileId)}/view" target="_blank" rel="noopener">Original file</a>` : ''}
-      </p>
+      <footer class="colophon">
+        ${!r.author && !r.book && r.sourceCredit ? `<span>Source: ${esc(r.sourceCredit)}</span>` : ''}
+        <span>Added${r.addedBy ? ` by ${esc(r.addedBy)}` : ''} on ${new Date(r.addedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        ${r.sourceFileId && !DEMO ? `<a href="https://drive.google.com/file/d/${encodeURIComponent(r.sourceFileId)}/view" target="_blank" rel="noopener">${icon('file')} Original file</a>` : ''}
+      </footer>
     </article>`;
 
   hydratePhotos(app);
   app.onclick = null;
+  app.onchange = onTick(r);
 
   const tabs = app.querySelectorAll('.tab');
-  tabs.forEach((t) => t.onclick = () => {
-    tabs.forEach((x) => x.classList.toggle('on', x === t));
-    const flow = t.dataset.tab === 'flow';
+  tabs.forEach((tab) => tab.onclick = () => {
+    tabs.forEach((x) => { x.classList.toggle('on', x === tab); x.setAttribute('aria-selected', x === tab); });
+    const flow = tab.dataset.tab === 'flow';
     document.getElementById('steps').hidden = flow;
     document.getElementById('flow').hidden = !flow;
     if (flow) renderFlowchart(r);
@@ -476,7 +631,16 @@ function renderRecipe(id) {
 
   setupWakeLock();
   renderNotes(r);
-  document.getElementById('note-form').onsubmit = async (e) => {
+  setupNoteForm(r);
+}
+
+async function setupNoteForm(r) {
+  const form = document.getElementById('note-form');
+  const writable = await canWriteNotes();
+  if (!form.isConnected) return;
+  form.hidden = !writable;
+  document.getElementById('note-readonly').hidden = writable;
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const box = document.getElementById('note-text');
     const text = box.value.trim();
@@ -487,7 +651,13 @@ function renderRecipe(id) {
       box.value = '';
       renderNotes(r);
     } catch (err) {
-      alert(`Could not save the note: ${err.message}`);
+      if (err.status === 403) {
+        state.canNote = false;
+        form.hidden = true;
+        document.getElementById('note-readonly').hidden = false;
+      } else {
+        alert(`Could not save the note: ${err.message}`);
+      }
     } finally {
       e.submitter.disabled = false;
     }
@@ -502,12 +672,13 @@ async function renderNotes(r) {
     el.innerHTML = `<p class="error">Could not load notes: ${esc(e.message)}</p>`;
     return;
   }
+  if (!el.isConnected) return;
   const notes = state.notes.filter((n) => n.recipeId === r.id).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   el.innerHTML = notes.length ? notes.map((n) => `
-    <div class="note">
+    <div class="slip">
       <p>${esc(n.text).replace(/\n/g, '<br>')}</p>
-      <p class="muted small">${esc(n.name || n.email)} · ${new Date(n.timestamp).toLocaleDateString()}
-        ${n.email === state.user.email ? `<button class="link small" data-del="${esc(n.id)}">Delete</button>` : ''}</p>
+      <p class="sig"><span>${esc(n.name || n.email)}, ${new Date(n.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        ${n.email === state.user.email ? `<button class="link" data-del="${esc(n.id)}">Delete</button>` : ''}</p>
     </div>`).join('') : '<p class="muted">No notes yet.</p>';
   el.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
     if (!confirm('Delete this note?')) return;
@@ -520,26 +691,155 @@ async function renderNotes(r) {
   });
 }
 
+// ---------- screen wake lock ----------
+
 let wakeLock = null;
+let cookTookLock = false; // cooking mode took the lock itself, so it gives it back on leaving
+
+async function takeWakeLock() {
+  try { wakeLock = await navigator.wakeLock.request('screen'); return true; } catch { return false; }
+}
+async function dropWakeLock() {
+  await wakeLock?.release().catch(() => {});
+  wakeLock = null;
+}
+
 function setupWakeLock() {
   const box = document.getElementById('awake');
   if (!('wakeLock' in navigator)) { box.parentElement.hidden = true; return; }
   box.checked = !!wakeLock;
   box.onchange = async () => {
-    if (box.checked) {
-      try { wakeLock = await navigator.wakeLock.request('screen'); } catch { box.checked = false; }
-    } else {
-      await wakeLock?.release();
-      wakeLock = null;
-    }
+    cookTookLock = false;
+    if (box.checked) box.checked = await takeWakeLock();
+    else await dropWakeLock();
   };
 }
 document.addEventListener('visibilitychange', async () => {
   // The browser drops the lock when the tab is hidden; take it back on return.
-  if (wakeLock && document.visibilityState === 'visible') {
-    try { wakeLock = await navigator.wakeLock.request('screen'); } catch { /* ignore */ }
-  }
+  if (wakeLock && document.visibilityState === 'visible') await takeWakeLock();
 });
+
+// ---------- cooking mode: one step per screen, the ribbon marks your place ----------
+
+let cookCtl = null;
+
+function leaveCooking() {
+  if (!cookCtl) return;
+  cookCtl.abort();
+  cookCtl = null;
+  document.body.classList.remove('cooking');
+  if (cookTookLock) { cookTookLock = false; dropWakeLock(); }
+}
+
+function renderCook(id) {
+  const r = state.byId.get(id);
+  if (!r || !r.steps.length) { location.replace(`#/r/${encodeURIComponent(id)}`); return; }
+  const n = r.steps.length;
+  const t = ticks.get(r.id);
+  let pos = Math.min(t.pos, n - 1);
+  if (pos === 0 && t.steps.length) pos = Math.max(0, r.steps.findIndex((s) => !t.steps.includes(s.id)));
+  const recipeHref = `#/r/${encodeURIComponent(r.id)}`;
+
+  cookCtl = new AbortController();
+  const { signal } = cookCtl;
+  document.body.classList.add('cooking');
+  if ('wakeLock' in navigator && !wakeLock) takeWakeLock().then((ok) => { cookTookLock = ok && !!cookCtl; });
+
+  app.onclick = null;
+  app.innerHTML = `
+    <section class="cook" aria-label="Cooking ${esc(r.title)}">
+      <header class="cook-bar cloth ${clothFor(r.course)}">
+        <a class="icon-button" href="${recipeHref}" aria-label="Leave cooking mode">${icon('close')}</a>
+        <span class="title">${esc(r.title)}</span>
+        <button class="icon-button" id="ings" aria-expanded="false" aria-controls="drawer">${icon('list')} Ingredients</button>
+      </header>
+      <div class="cook-page" id="cook-page">
+        <div class="rail" aria-hidden="true">
+          ${r.steps.map((s, i) => `<span class="dot" data-dot="${esc(s.id)}" style="top:${((i + 0.5) / n) * 100}%"></span>`).join('')}
+          <span class="mark"></span>
+        </div>
+        <div id="cook-step" aria-live="polite"></div>
+      </div>
+      <nav class="cook-nav">
+        <button class="prev" id="prev">${icon('back')} Back</button>
+        <button class="next" id="next"></button>
+      </nav>
+      <aside class="drawer" id="drawer" aria-label="Ingredients">
+        <div class="drawer-head"><h2>Ingredients</h2>
+          <button class="icon-button" id="drawer-close" aria-label="Close ingredients">${icon('close')}</button></div>
+        ${ingredientList(r)}
+      </aside>
+    </section>`;
+
+  const stepEl = document.getElementById('cook-step');
+  const page = document.getElementById('cook-page');
+  const mark = app.querySelector('.rail .mark');
+  const drawer = document.getElementById('drawer');
+  const ingsBtn = document.getElementById('ings');
+  app.onchange = onTick(r);
+
+  function show() {
+    const done = pos >= n; // the "that's everything" page after the last step
+    ticks.setPos(r.id, Math.min(pos, n - 1));
+    mark.style.setProperty('--to', `calc(${((Math.min(pos, n - 1) + 0.5) / n) * 100}% + 10px)`);
+    app.querySelectorAll('[data-dot]').forEach((d) => d.classList.toggle('done', ticks.has(r.id, 'steps', d.dataset.dot)));
+    if (done) {
+      stepEl.innerHTML = `
+        <div class="cook-step cook-end">
+          <h2>That’s everything</h2>
+          <p>All ${n} steps of ${esc(r.title)}. Enjoy it, and leave a note on the recipe if you changed anything.</p>
+        </div>`;
+    } else {
+      const s = r.steps[pos];
+      const isDone = ticks.has(r.id, 'steps', s.id);
+      stepEl.innerHTML = `
+        <div class="cook-step ${isDone ? 'done' : ''}">
+          <p class="cook-count"><span class="label-name">Step ${pos + 1}</span> of ${n}</p>
+          <p class="cook-text ${s.text.length <= 70 ? 'short' : s.text.length <= 140 ? 'mid' : ''}">${esc(s.text)}</p>
+          ${s.minutes ? `<p class="cook-time">About ${fmtMinutes(s.minutes)}</p>` : ''}
+          <button class="cook-done" id="done" aria-pressed="${isDone}"><span class="box">${icon('check')}</span> ${isDone ? 'Done' : 'Mark done'}</button>
+        </div>`;
+      document.getElementById('done').onclick = () => { ticks.set(r.id, 'steps', s.id, !isDone); show(); };
+    }
+    document.getElementById('prev').disabled = pos === 0;
+    document.getElementById('next').innerHTML = done ? `Close ${icon('close')}` : pos === n - 1 ? `Finish ${icon('check')}` : `Next ${icon('next')}`;
+    page.scrollTop = 0;
+  }
+  function go(delta) {
+    if (delta > 0 && pos < n) ticks.set(r.id, 'steps', r.steps[pos].id, true); // moving on means it's done
+    if (delta > 0 && pos >= n) { location.hash = recipeHref; return; }
+    pos = Math.max(0, Math.min(n, pos + delta));
+    show();
+  }
+  function toggleDrawer(open = !drawer.classList.contains('open')) {
+    drawer.classList.toggle('open', open);
+    ingsBtn.setAttribute('aria-expanded', open);
+    if (open) document.getElementById('drawer-close').focus();
+  }
+
+  document.getElementById('prev').onclick = () => go(-1);
+  document.getElementById('next').onclick = () => go(1);
+  ingsBtn.onclick = () => toggleDrawer();
+  document.getElementById('drawer-close').onclick = () => { toggleDrawer(false); ingsBtn.focus(); };
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('input, textarea')) return;
+    if (e.key === 'Escape') { if (drawer.classList.contains('open')) toggleDrawer(false); else location.hash = recipeHref; }
+    else if (e.key === 'ArrowRight' || e.key === 'PageDown') go(1);
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(-1);
+  }, { signal });
+
+  let touch = null;
+  page.addEventListener('touchstart', (e) => { touch = e.touches[0]; }, { passive: true, signal });
+  page.addEventListener('touchend', (e) => {
+    if (!touch) return;
+    const dx = e.changedTouches[0].clientX - touch.clientX, dy = e.changedTouches[0].clientY - touch.clientY;
+    touch = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+  }, { signal });
+
+  show();
+}
 
 // ---------- flowchart ----------
 
@@ -547,7 +847,13 @@ let mermaidReady = null;
 function loadMermaid() {
   mermaidReady ??= import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs').then(({ default: m }) => {
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    m.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'strict', flowchart: { useMaxWidth: true, htmlLabels: true } });
+    m.initialize({
+      startOnLoad: false, theme: 'base', securityLevel: 'strict',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      themeVariables: dark
+        ? { background: '#121813', primaryColor: '#1a221c', primaryBorderColor: '#6f9a7e', primaryTextColor: '#e8ebe2', lineColor: '#a2ac9c', fontFamily: 'system-ui, sans-serif', fontSize: '15px' }
+        : { background: '#f6f7f3', primaryColor: '#ffffff', primaryBorderColor: '#1f3a2b', primaryTextColor: '#17211b', lineColor: '#55604f', fontFamily: 'system-ui, sans-serif', fontSize: '15px' },
+    });
     return m;
   });
   return mermaidReady;
@@ -587,7 +893,7 @@ async function renderFlowchart(r) {
   try {
     const mermaid = await loadMermaid();
     const { svg } = await mermaid.render(`fc-${Date.now()}`, flowchartSource(r));
-    el.innerHTML = `${svg}<p class="muted small">Tap a box to see the full step. Boxes side by side can be done at the same time.</p><div id="flow-detail" class="flow-detail" hidden></div>`;
+    el.innerHTML = `${svg}<p class="flow-hint">Tap a box to see the full step. Boxes side by side can be done at the same time.</p><div id="flow-detail" class="flow-detail" hidden></div>`;
     el.dataset.done = r.id;
     el.querySelectorAll('g.node').forEach((node) => {
       const m = node.id.match(/flowchart-(.+)-\d+$/);
@@ -605,32 +911,48 @@ async function renderFlowchart(r) {
   }
 }
 
-// ---------- inbox / status ----------
+// ---------- add recipes / status ----------
 
 async function renderInbox() {
   const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(CFG.inboxFolderId)}`;
   app.innerHTML = `
     <section class="inbox">
-      <a href="#/" class="back">← All recipes</a>
-      <h1>Add recipes</h1>
+      <a href="#/" class="back">${icon('back')} All recipes</a>
+      <header class="recipe-cover cloth frame"><h1 class="foil">Add recipes</h1>
+        <p class="lede">Recipes are added in Google Drive, not on this site. Anything put in the shared recipe folder appears here within the hour.</p></header>
+      <div id="access" class="access"></div>
+      <h2 class="spine-label cloth">How to add one</h2>
       <ol>
-        <li>Open the <a href="${folderUrl}" target="_blank" rel="noopener">Recipe Box folder in Google Drive</a>.</li>
+        <li>Open the <a href="${folderUrl}" target="_blank" rel="noopener">shared recipe folder in Google Drive</a>.</li>
         <li>Upload a PDF, a photo of a recipe (cookbook page, handwritten card), a Google Doc, a Word file or a text file. Subfolders are fine.</li>
-        <li>Want a nice photo of the finished dish? Upload it with the <b>same name</b> as the recipe file, e.g. <code>Lasagne.pdf</code> + <code>Lasagne.jpg</code>.</li>
+        <li>Want a nice photo of the finished dish? Upload it with the <b>same name</b> as the recipe file, for example <code>Lasagne.pdf</code> and <code>Lasagne.jpg</code>.</li>
         <li>New files are picked up within the hour. To fix a recipe, edit or replace the file; delete it to remove the recipe.</li>
       </ol>
-      <h2>Processing status</h2>
+      <h2 class="spine-label cloth">Processing status</h2>
       <div id="status"><p class="muted">Loading…</p></div>
     </section>`;
   app.onclick = null;
+  app.onchange = null;
+
+  inboxAccess().then(({ canAdd, owners }) => {
+    const el = document.getElementById('access');
+    if (!el || canAdd) return;
+    const who = owners.length ? esc(owners.join(' or ')) : 'whoever shares the recipe folder with you';
+    el.innerHTML = `<div class="slip"><p><b>Your account can read the recipe folder but not add to it.</b></p>
+      <p>To add recipes, ask ${who} to make you an editor of the folder. Until then you can still browse, search and cook from everything here.</p></div>`;
+  });
+
   try {
     const rows = await loadStatus();
-    document.getElementById('status').innerHTML = rows.length ? `
-      <table class="status"><thead><tr><th>File</th><th>Status</th><th>Recipes</th></tr></thead><tbody>
+    const el = document.getElementById('status');
+    if (!el) return;
+    el.innerHTML = rows.length ? `
+      <div class="table-wrap"><table class="status"><thead class="cloth"><tr><th>File</th><th>Status</th><th>Recipes</th></tr></thead><tbody>
       ${rows.map(([file, status, n, detail]) => `<tr class="${status === 'error' || status.startsWith('unsupported') ? 'bad' : ''}"><td>${esc(file)}${detail ? `<br><small>${esc(detail)}</small>` : ''}</td><td>${esc(status)}</td><td>${esc(n)}</td></tr>`).join('')}
-      </tbody></table>` : '<p class="muted">Nothing processed yet.</p>';
+      </tbody></table></div>` : '<p class="muted">Nothing processed yet.</p>';
   } catch (e) {
-    document.getElementById('status').innerHTML = `<p class="error">Could not load status: ${esc(e.message)}</p>`;
+    const el = document.getElementById('status');
+    if (el) el.innerHTML = `<p class="error">Could not load status: ${esc(e.message)}</p>`;
   }
 }
 
@@ -638,23 +960,27 @@ async function renderInbox() {
 
 function route() {
   if (!state.user) return;
+  leaveCooking();
   const hash = location.hash || '#/';
   window.scrollTo(0, 0);
-  if (hash.startsWith('#/r/')) renderRecipe(decodeURIComponent(hash.slice(4)));
-  else if (hash === '#/inbox') renderInbox();
+  const m = hash.match(/^#\/r\/([^/]+)(\/cook)?$/);
+  if (m) {
+    const id = decodeURIComponent(m[1]);
+    if (m[2]) renderCook(id); else renderRecipe(id);
+  } else if (hash === '#/inbox') renderInbox();
   else renderHome();
 }
 window.addEventListener('hashchange', route);
 
 async function start() {
-  app.innerHTML = '<p class="muted center">Loading recipes…</p>';
+  app.innerHTML = '<p class="muted center">Opening the book…</p>';
   if (DEMO) {
     state.user = { email: 'demo@example.com', name: 'Demo user' };
   } else {
     const info = await (await gfetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();
     state.user = { email: info.email, name: info.given_name || info.name || info.email };
   }
-  document.getElementById('signout').hidden = DEMO;
+  setSignedIn(true);
   try {
     await loadRecipes();
   } catch (e) {
