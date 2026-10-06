@@ -458,6 +458,46 @@ function keyIngredients(r, limit = 3) {
     .map((x) => x.key);
 }
 
+// ---------- equipment, complexity and the check of each conversion ----------
+// Recipes the Apps Script job hasn't checked yet have no equipment, unclear or certainty.
+
+const equipment = (r) => r.equipment || [];
+const equipmentName = (e) => (e.kind === 'other' ? e.other || 'other' : e.kind);
+const equipmentIcon = (e) => icon(`eq-${e.kind.replace(/ /g, '-')}`);
+
+/** Equipment as small icons with ×N, each named for screen readers and on hover. */
+function kitIcons(r) {
+  return equipment(r).map((e) => {
+    const name = `${equipmentName(e)}${e.count > 1 ? ` ×${e.count}` : ''}`;
+    return `<span class="kit-icon" role="img" aria-label="${esc(name)}" title="${esc(name)}">${equipmentIcon(e)}${e.count > 1 ? `<small>×${e.count}</small>` : ''}</span>`;
+  }).join('');
+}
+
+/** How involved a recipe is, from the flowchart links and the equipment. One-pot recipes score 0. */
+function complexity(r) {
+  const ids = new Set(r.steps.map((s) => s.id));
+  const links = (s) => s.dependsOn.filter((d) => ids.has(d) && d !== s.id); // as the flowchart draws them
+  const starts = r.steps.filter((s) => !links(s).length).length;
+  const joins = r.steps.filter((s) => links(s).length > 1).length;
+  const kit = equipment(r).reduce((n, e) => n + e.count, 0);
+  return { steps: r.steps.length, starts, joins, kit, score: Math.max(0, starts - 1) + joins + Math.max(0, kit - 1) };
+}
+
+function complexityText(c) {
+  return [
+    `${c.steps} step${c.steps === 1 ? '' : 's'}`,
+    c.starts > 1 && `${c.starts} started separately`,
+    c.joins && `${c.joins} point${c.joins === 1 ? '' : 's'} where they combine`,
+  ].filter(Boolean).join(', ');
+}
+
+const CHECKED_PREFIX = 'Checked against the original';
+/** The note saying someone compared the steps with the original and they are right. */
+const checkedNote = (r) => (state.notes || []).find((n) => n.recipeId === r.id && n.text.startsWith(CHECKED_PREFIX));
+const hasCheck = (r) => typeof r.certainty === 'number';
+/** Unclear points still worth showing: none once someone has checked the recipe against the original. */
+const unclearFor = (r) => (checkedNote(r) ? [] : r.unclear || []);
+
 // ---------- views ----------
 
 function recipeCard(r) {
@@ -471,7 +511,7 @@ function recipeCard(r) {
       <a class="card-link" href="#/r/${encodeURIComponent(r.id)}">
         <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}" style="--shift:${hash(r.id) % 32}px"></div>
         <h3>${esc(r.title)}</h3>
-        <p class="meta">${[t, r.servings && `serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}</p>
+        <p class="meta">${[t, r.servings && `serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}${equipment(r).length ? `<span class="kit" aria-label="Equipment">${kitIcons(r)}</span>` : ''}</p>
         ${uses.length ? `<p class="meta uses-line">${icon('check')}<span>Uses ${esc(uses.join(', '))}</span></p>` : ''}
         ${needs.length ? `<p class="meta needs-line">Needs ${esc(needs.join(', '))}</p>` : ''}
       </a>
@@ -799,21 +839,18 @@ function renderRecipe(id) {
         <section class="ingredients">
           <h2 class="section-title">Ingredients</h2>
           ${ingredientList(r)}
+          ${equipment(r).length ? `<h2 class="section-title kit-title">Equipment</h2>
+          <ul class="kit-list">${equipment(r).map((e) => `<li>${equipmentIcon(e)}<span>${esc(equipmentName(e))}</span>${e.count > 1 ? `<b>×${e.count}</b>` : ''}</li>`).join('')}</ul>` : ''}
         </section>
 
         <section class="method">
+          <div id="doubt"></div>
           <div class="method-tabs" role="tablist">
             <button role="tab" class="seg on" aria-selected="true" data-tab="steps">Steps</button>
             <button role="tab" class="seg" aria-selected="false" data-tab="flow">Flowchart</button>
             <label class="awake"><input type="checkbox" id="awake"> Keep screen on</label>
           </div>
-          <ol class="steps" id="steps">${r.steps.map((s, i) => `
-            <li class="${started && i === t.pos ? 'here' : ''}">
-              <label class="tick"><input type="checkbox" data-tick="steps:${esc(s.id)}" ${t.steps.includes(s.id) ? 'checked' : ''}>
-                <span class="num">${i + 1}</span>
-                <span class="txt">${esc(s.text)}${s.minutes ? ` <span class="step-time">(${fmtMinutes(s.minutes)})</span>` : ''}</span></label>
-            </li>`).join('')}
-          </ol>
+          <ol class="steps" id="steps"></ol>
           <div id="flow" class="flow" hidden><p class="muted">Drawing…</p></div>
         </section>
       </div>
@@ -844,6 +881,7 @@ function renderRecipe(id) {
   hydratePhotos(app);
   app.onclick = null;
   app.onchange = onTick(r);
+  renderSteps(r);
 
   const tabs = app.querySelectorAll('.seg');
   tabs.forEach((tab) => tab.onclick = () => {
@@ -855,8 +893,71 @@ function renderRecipe(id) {
   });
 
   setupWakeLock();
-  renderNotes(r);
+  renderNotes(r).then(() => { if (document.getElementById('doubt')) renderSteps(r); });
   setupNoteForm(r);
+}
+
+/**
+ * The steps, with any that came out unclear in the conversion marked and explained,
+ * and a slip above the method when something serious needs checking against the original.
+ */
+function renderSteps(r) {
+  const t = ticks.get(r.id);
+  const started = t.pos > 0 || t.steps.length > 0;
+  const unclear = unclearFor(r);
+  const notesFor = (id) => unclear.filter((u) => u.step === id);
+  document.getElementById('steps').innerHTML = r.steps.map((s, i) => {
+    const notes = notesFor(s.id);
+    const level = notes.some((u) => u.serious) ? 'doubt' : notes.length ? 'doubt minor' : '';
+    return `
+      <li class="${started && i === t.pos ? 'here' : ''} ${level}">
+        <label class="tick"><input type="checkbox" data-tick="steps:${esc(s.id)}" ${t.steps.includes(s.id) ? 'checked' : ''}>
+          <span class="num">${i + 1}</span>
+          <span class="txt">${esc(s.text)}${s.minutes ? ` <span class="step-time">(${fmtMinutes(s.minutes)})</span>` : ''}</span></label>
+        ${notes.map((u) => `<p class="step-note">${icon('flag')}<span>${esc(u.note)}</span></p>`).join('')}
+      </li>`;
+  }).join('');
+
+  const el = document.getElementById('doubt');
+  const checked = checkedNote(r);
+  const serious = unclear.filter((u) => u.serious).length;
+  const general = unclear.filter((u) => !u.step);
+  const original = r.sourceFileId && !DEMO
+    ? `<a href="https://drive.google.com/file/d/${encodeURIComponent(r.sourceFileId)}/view" target="_blank" rel="noopener">the original file</a>`
+    : 'the original';
+  if (checked) {
+    el.innerHTML = `<p class="checked-line">${icon('check')} Checked against the original by ${esc(checked.name || checked.email)},
+      ${new Date(checked.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.</p>`;
+  } else if (serious || general.length) {
+    el.innerHTML = `<div class="slip doubt-slip">
+      <p class="doubt-head">${icon('flag')} <b>${serious ? 'The steps may not match the original' : 'One thing to check'}</b>
+        ${hasCheck(r) ? `<span class="certainty">Certainty ${r.certainty}%</span>` : ''}</p>
+      <p>${serious ? `When this recipe was converted, ${serious === 1 ? 'one step' : `${serious} steps`} came out unclear. ` : ''}${
+        unclear.some((u) => u.step) ? 'They are marked below. ' : ''}Check against ${original} before cooking.</p>
+      ${general.length ? `<ul class="tips">${general.map((u) => `<li>${esc(u.note)}</li>`).join('')}</ul>` : ''}
+      <p><button class="button" id="mark-checked" hidden>${icon('check')} The steps match the original</button></p>
+    </div>`;
+    canWriteNotes().then((ok) => {
+      const b = document.getElementById('mark-checked');
+      if (!b || !ok) return;
+      b.hidden = false;
+      b.onclick = async () => {
+        b.disabled = true;
+        try {
+          await addNote(r.id, `${CHECKED_PREFIX}: the steps are right.`);
+          renderSteps(r);
+          renderNotes(r);
+        } catch (err) {
+          alert(`Could not save: ${err.message}`);
+          b.disabled = false;
+        }
+      };
+    });
+  } else {
+    el.innerHTML = '';
+  }
+  const flow = document.getElementById('flow');
+  if (flow?.dataset.done) { delete flow.dataset.done; if (!flow.hidden) renderFlowchart(r); } // marks may have changed
 }
 
 async function setupNoteForm(r) {
@@ -1022,6 +1123,7 @@ function renderCook(id) {
           <p class="cook-count"><span class="label-name">Step ${pos + 1}</span> of ${n}</p>
           <p class="cook-text ${s.text.length <= 70 ? 'short' : s.text.length <= 140 ? 'mid' : ''}">${esc(s.text)}</p>
           ${s.minutes ? `<p class="cook-time">About ${fmtMinutes(s.minutes)}</p>` : ''}
+          ${unclearFor(r).filter((u) => u.step === s.id).map((u) => `<p class="step-note">${icon('flag')}<span>${esc(u.note)}</span></p>`).join('')}
           <button class="cook-done" id="done" aria-pressed="${isDone}"><span class="box">${icon('check')}</span> ${isDone ? 'Done' : 'Mark done'}</button>
         </div>`;
       document.getElementById('done').onclick = () => { ticks.set(r.id, 'steps', s.id, !isDone); show(); };
@@ -1108,6 +1210,13 @@ function flowchartSource(r) {
   for (const s of r.steps) {
     if (s.id !== last && !usedAsDep.has(s.id)) lines.push(`  ${s.id} -.-> ${last}`);
   }
+  // Steps that came out unclear in the conversion: dashed outline in the error colour.
+  const doubt = [...new Set(unclearFor(r).filter((u) => u.step && ids.has(u.step)).map((u) => u.step))];
+  if (doubt.length) {
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    lines.push(`  classDef doubt fill:${dark ? '#3a211b' : '#fbeae4'},stroke:${dark ? '#ff9d8f' : '#a3261b'},stroke-width:2.5px,stroke-dasharray:6 3`);
+    lines.push(`  class ${doubt.join(',')} doubt`);
+  }
   return lines.join('\n');
 }
 
@@ -1127,7 +1236,8 @@ async function renderFlowchart(r) {
       node.onclick = () => {
         const d = document.getElementById('flow-detail');
         d.hidden = false;
-        d.innerHTML = `<b>Step ${r.steps.indexOf(step) + 1}.</b> ${esc(step.text)}`;
+        d.innerHTML = `<b>Step ${r.steps.indexOf(step) + 1}.</b> ${esc(step.text)}${unclearFor(r).filter((u) => u.step === step.id)
+          .map((u) => `<p class="step-note">${icon('flag')}<span>${esc(u.note)}</span></p>`).join('')}`;
       };
     });
   } catch (e) {
@@ -1152,6 +1262,9 @@ async function renderInbox() {
         <li>Want a nice photo of the finished dish? Upload it with the <b>same name</b> as the recipe file, for example <code>Lasagne.pdf</code> and <code>Lasagne.jpg</code>.</li>
         <li>New files are picked up within the hour. To fix a recipe, edit or replace the file; delete it to remove the recipe.</li>
       </ol>
+      <h2 class="section-title">Checking the conversions</h2>
+      <p>After converting a recipe, Claude reads it again for steps that may have come out wrong, and lists the equipment it needs.
+        <a href="#/review">See which recipes to check against the original</a>.</p>
       <h2 class="section-title">Processing status</h2>
       <div id="status"><p class="muted">Loading…</p></div>
     </section>`;
@@ -1180,6 +1293,70 @@ async function renderInbox() {
   }
 }
 
+/**
+ * Recipes to check against the original: those Claude was least sure of first, then
+ * the most complex. Recipes Claude hasn't read yet come after, most complex first.
+ */
+async function renderReview() {
+  app.innerHTML = '<p class="muted center">Loading…</p>';
+  app.onclick = null;
+  app.onchange = null;
+  try { if (!state.notes) await loadNotes(); } catch { state.notes = []; }
+  if (location.hash !== '#/review') return;
+
+  const rows = state.recipes.map((r) => ({ r, c: complexity(r), done: checkedNote(r) }));
+  const byComplexity = (a, b) => b.c.score - a.c.score || b.c.steps - a.c.steps || a.r.title.localeCompare(b.r.title);
+  const read = rows.filter((x) => hasCheck(x.r) && !x.done);
+  const toCheck = read.filter((x) => (x.r.unclear || []).length).sort((a, b) => a.r.certainty - b.r.certainty || byComplexity(a, b));
+  const clear = read.filter((x) => !(x.r.unclear || []).length).sort(byComplexity);
+  const notYet = rows.filter((x) => !hasCheck(x.r) && !x.done).sort(byComplexity);
+  const done = rows.filter((x) => x.done).sort((a, b) => b.done.timestamp.localeCompare(a.done.timestamp));
+
+  const others = new Map();
+  for (const r of state.recipes) {
+    for (const e of equipment(r)) {
+      if (e.kind === 'other') others.set(equipmentName(e).toLowerCase(), (others.get(equipmentName(e).toLowerCase()) || 0) + 1);
+    }
+  }
+
+  const band = (c) => (c < 60 ? 'low' : c < 90 ? 'mid' : 'high');
+  const row = ({ r, c }) => {
+    const unclear = r.unclear || [];
+    const first = unclear.find((u) => u.serious) || unclear[0];
+    return `<li class="review-row">
+      ${hasCheck(r) ? `<span class="score ${band(r.certainty)}"><b>${r.certainty}%</b><small>certainty</small></span>` : '<span class="score none"><b>?</b><small>not read</small></span>'}
+      <div>
+        <a class="review-title" href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>
+        <p class="meta">${esc(complexityText(c))}</p>
+        ${equipment(r).length ? `<p class="meta"><span class="kit">${kitIcons(r)}</span></p>` : ''}
+        ${first ? `<p class="review-note">${esc(first.note)}${unclear.length > 1 ? ` <span class="muted">And ${unclear.length - 1} more.</span>` : ''}</p>` : ''}
+      </div>
+    </li>`;
+  };
+
+  app.innerHTML = `
+    <section class="review">
+      <a href="#/inbox" class="back">${icon('back')} Add recipes</a>
+      <header class="page-head"><h1>Recipes to check</h1>
+        <p class="lede">Claude reread each converted recipe for steps that could send a cook wrong, and scored how sure it is that the steps and flowchart match the original. The least certain come first, then the most complex. Open one, compare it with the original file, and mark it as checked.</p></header>
+      <p class="review-count">${[`${toCheck.length} with something unclear`, clear.length && `${clear.length} with nothing unclear`,
+        notYet.length && `${notYet.length} not read by Claude yet`, done.length && `${done.length} checked against the original`].filter(Boolean).join(', ')}.</p>
+      ${toCheck.length ? `<ol class="review-list">${toCheck.map(row).join('')}</ol>` : ''}
+      ${clear.length ? `<h2 class="section-title">Nothing unclear</h2>
+        <p class="muted">Claude found nothing unclear in these. Most complex first, as those are the likeliest to have slipped through.</p>
+        <ol class="review-list">${clear.map(row).join('')}</ol>` : ''}
+      ${notYet.length ? `<h2 class="section-title">Not read by Claude yet</h2>
+        <p class="muted">Claude reads these over the next few hourly runs. Most complex first.</p>
+        <ol class="review-list">${notYet.map(row).join('')}</ol>` : ''}
+      ${done.length ? `<h2 class="section-title">Checked against the original</h2>
+        <ul class="review-done">${done.map(({ r, done: n }) => `<li><a href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>
+          <span class="muted">${esc(n.name || n.email)}, ${new Date(n.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></li>`).join('')}</ul>` : ''}
+      ${others.size ? `<h2 class="section-title">Other equipment</h2>
+        <p class="muted">Equipment that isn't one of the usual kinds. Anything that keeps coming up could get its own icon.</p>
+        <ul class="tags">${[...others].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => `<li>${esc(name)} <b>${n}</b></li>`).join('')}</ul>` : ''}
+    </section>`;
+}
+
 // ---------- routing & startup ----------
 
 function route() {
@@ -1192,6 +1369,7 @@ function route() {
     const id = decodeURIComponent(m[1]);
     if (m[2]) renderCook(id); else renderRecipe(id);
   } else if (hash === '#/inbox') renderInbox();
+  else if (hash === '#/review') renderReview();
   else renderHome();
 }
 window.addEventListener('hashchange', route);

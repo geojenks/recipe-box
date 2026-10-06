@@ -244,6 +244,11 @@ main:has(> .signin), main:has(> .cook) { max-width: none; padding: 0; }
 .card-link:hover h3 { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: .2em; text-decoration-thickness: 2px; }
 .meta { margin: .15rem 0 0; font-size: .84rem; color: var(--muted); font-weight: 650; line-height: 1.4; }
 .needs-line { color: var(--accent-deep); }
+/* equipment as small icons with a count */
+.kit { display: inline-flex; flex-wrap: wrap; gap: .1rem .45rem; vertical-align: -.2em; margin-left: .7rem; }
+.kit-icon { display: inline-flex; align-items: center; gap: .05rem; color: var(--muted); }
+.kit-icon .i { width: 1.15rem; height: 1.15rem; stroke-width: 1.9; }
+.kit-icon small { font-size: .74rem; font-weight: 850; }
 .card.needs .thumb { opacity: .55; filter: grayscale(.6); }
 
 .uses-line { display: flex; align-items: flex-start; gap: .25rem; color: var(--have); }
@@ -383,6 +388,36 @@ main:has(> .signin), main:has(> .cook) { max-width: none; padding: 0; }
 .steps li.here .num { box-shadow: 0 0 0 3px var(--ground), 0 0 0 5.5px var(--accent); }
 .step-time { color: var(--muted); font-size: .85rem; font-weight: 700; white-space: nowrap; }
 
+/* equipment on the recipe page */
+.kit-title { margin-top: 2rem; }
+.kit-list { list-style: none; margin: 0; padding: 0; }
+.kit-list li { display: flex; align-items: center; gap: .7rem; padding: .5rem 0; border-bottom: 1px solid var(--rule); }
+.kit-list .i { width: 1.6rem; height: 1.6rem; stroke-width: 1.7; color: var(--pg, var(--accent)); flex: none; }
+.kit-list span::first-letter { text-transform: uppercase; }
+.kit-list b { font-weight: 900; margin-left: auto; color: var(--muted); }
+
+/* steps that came out unclear when the recipe was converted */
+.step-note { display: flex; gap: .45rem; align-items: flex-start; margin: 0; font-size: .9rem; font-weight: 700; color: var(--error); max-width: 65ch; }
+.step-note .i { flex: none; width: 1.05rem; height: 1.05rem; margin-top: .12rem; }
+.steps .step-note { margin: -.45rem 0 0; padding: 0 0 .9rem 2.9rem; }
+.steps li.doubt .num { border-style: dashed; border-color: var(--error); background: color-mix(in oklab, var(--error) 12%, var(--surface)); color: var(--error); }
+.steps li.doubt.minor .num { border-color: var(--pg); background: var(--pg-soft); color: inherit; }
+.steps li.doubt.minor .step-note { color: var(--muted); }
+.steps li.doubt:has(.step-note) .tick { border-bottom: 0; }
+.steps li.doubt { border-bottom: 1px solid var(--rule); }
+.cook-step .step-note { margin: 0 0 1.2rem; font-size: 1rem; }
+.flow-detail .step-note { margin-top: .5rem; }
+.doubt-slip { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--error) 45%, transparent); margin-top: 2.2rem; }
+.doubt-slip + .method-tabs, .checked-line + .method-tabs { margin-top: 1rem; }
+.doubt-head { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .5rem; color: var(--error); }
+.doubt-head .i { width: 1.2rem; height: 1.2rem; }
+.doubt-slip .certainty { margin-left: auto; font-size: .82rem; font-weight: 850; color: var(--muted); }
+.doubt-slip .tips { margin: .4rem 0 .6rem; }
+.doubt-slip .button { margin-top: .4rem; }
+.doubt-slip a { color: var(--link); font-weight: 750; }
+.checked-line { display: flex; gap: .4rem; align-items: center; margin: 2.2rem 0 0; font-size: .9rem; font-weight: 750; color: var(--have); }
+.checked-line .i { width: 1.1rem; height: 1.1rem; stroke-width: 2.6; }
+
 .flow { overflow-x: auto; padding: 1rem 0 .5rem; }
 .flow svg { max-width: 100%; height: auto; }
 .flow-hint { font-size: .85rem; color: var(--muted); margin: .4rem 0 0; }
@@ -518,6 +553,27 @@ body.cooking { overflow: hidden; }
 .status td:last-child, .status th:last-child { text-align: right; }
 .status tr.bad td:nth-child(2) { color: var(--error); font-weight: 800; }
 .status small { color: var(--muted); }
+
+/* recipes to check against the original */
+.review a:not(.back):not(.review-title) { color: var(--link); font-weight: 750; }
+.review-count { font-weight: 750; color: var(--muted); margin: 1.4rem 0 .4rem; }
+.review-list { list-style: none; margin: 0 0 1rem; padding: 0; }
+.review-row { display: flex; gap: 1rem; align-items: flex-start; padding: .9rem 0; border-bottom: 1px solid var(--rule); }
+.review-row > div { min-width: 0; }
+.review-title { font-weight: 850; font-size: 1.02rem; text-decoration: none; }
+.review-title:hover { text-decoration: underline; text-decoration-color: var(--accent); }
+.review-note { margin: .3rem 0 0; font-size: .88rem; max-width: 70ch; }
+.score { flex: none; width: 4.2rem; display: grid; justify-items: center; padding: .35rem 0; border-radius: 14px; background: var(--surface); line-height: 1.1; }
+.score b { font-size: 1.15rem; font-weight: 900; }
+.score small { font-size: .68rem; font-weight: 800; color: var(--muted); }
+.score.low { background: color-mix(in oklab, var(--error) 14%, var(--surface)); color: var(--error); }
+.score.mid { background: color-mix(in oklab, var(--pg2) 22%, var(--surface)); }
+.score.none { color: var(--muted); }
+.review-done { list-style: none; padding: 0; margin: 0; }
+.review-done li { display: flex; flex-wrap: wrap; gap: .2rem .8rem; padding: .45rem 0; border-bottom: 1px solid var(--rule); }
+.review-done .muted { font-size: .85rem; }
+.review-row .kit { margin-left: 0; }
+.review .tags b { font-weight: 900; color: var(--ink); margin-left: .2rem; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }

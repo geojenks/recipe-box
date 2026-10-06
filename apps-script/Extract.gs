@@ -184,3 +184,215 @@ function parseExtractionResponse_(body) {
   var text = body.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
   return JSON.parse(text);
 }
+
+// ---------- checking an extracted recipe ----------
+//
+// A second, text-only pass over each recipe once it has been extracted. It lists
+// the equipment, traces every step that uses something made earlier, and flags
+// anything a cook could get wrong: mostly a later step referring back to a pot or
+// mixture ("add the raisins to the cream") where the flowchart links may be wrong.
+
+// The kinds the website has icons for. Anything else is "other", with a name;
+// if the same "other" keeps coming up, add it here and to the site's icons.
+var EQUIPMENT_KINDS = [
+  'saucepan', 'frying pan', 'wok', 'casserole', 'roasting tin', 'baking tray', 'baking dish',
+  'cake tin', 'mixing bowl', 'food processor', 'blender', 'mixer', 'other'
+];
+
+var CHECK_PROMPT = [
+  'You check recipes that were converted from cookbook pages into numbered steps with a flowchart, for a',
+  'small private recipe website. Each step has an id, its text, and "dependsOn": the earlier steps whose',
+  'output it uses. The flowchart is drawn from dependsOn, so a wrong or missing link sends the cook wrong.',
+  'Cookbooks are often written out of order: a later paragraph says "now add the raisins to the cream" about',
+  'a pot last touched much earlier. That is where conversions go wrong, so look hardest there.',
+  '',
+  'Give, in this order:',
+  '1. "equipment": the pots, pans, tins, bowls and machines the cook needs. Use one of the listed kinds;',
+  '   for anything else use "other" and name it in "other" (e.g. "slow cooker", "griddle pan").',
+  '   Kinds: saucepan (includes stockpots and milk pans); frying pan (includes sauté pans and skillets);',
+  '   wok; casserole (heavy lidded pot that can go in the oven); roasting tin; baking tray (flat sheet);',
+  '   baking dish (ovenproof, gratin or pie dish); cake tin (includes loaf, tart and muffin tins);',
+  '   mixing bowl; food processor (includes mini choppers); blender (jug or stick blender);',
+  '   mixer (stand mixer or electric whisk).',
+  '   "count" is how many of that kind you need, i.e. the most in use at once, counting one that is holding',
+  '   something set aside for later. Leave out knives, boards, spoons, whisks, sieves, graters, jugs,',
+  '   scales, serving plates and the hob or oven itself. Only include a mixing bowl if something is mixed,',
+  '   soaked or marinated in it; a bowl of any size used that way is a mixing bowl, not "other".',
+  '   Count what the steps actually need, even if the recipe does not name it.',
+  '2. "references": for every step that uses something prepared in an earlier step (a mixture, a pot,',
+  '   a sauce, "the onions", "it"), the words that refer to it, the id of the step where that thing was made',
+  '   or last changed ("madeIn", null if it was never made), and whether you are sure.',
+  '3. "unclear": places where the conversion into steps and flowchart may send a cook wrong. Include:',
+  '   - a reference you are not sure about, or that could mean more than one earlier thing;',
+  '   - a step whose dependsOn does not lead back to the step its reference was made in, directly or',
+  '     through earlier steps (a link through earlier steps is fine: do not report it);',
+  '   - a step that uses something before it has been made, an instruction that belongs earlier',
+  '     (e.g. "five minutes before the end, add..." written after that stage), or steps out of order;',
+  '   - an ingredient in the list that no step uses.',
+  '   Do not report things the original probably left out too (how to prepare an ingredient, a choice of',
+  '   alternatives, slightly different wording), style, or missing times. If you look at something and',
+  '   conclude it is fine, leave it out. Most recipes have nothing unclear: return an empty list then.',
+  '   For each: the step id; "serious": true if a cook following the steps or flowchart would likely get',
+  '   the dish wrong (wrong order, a missing link, something used before it exists), false for a minor',
+  '   point; and a "note" of one or two plain sentences telling the cook what to check, e.g. "Step 9 adds',
+  '   the raisins to \'the cream\', which was heated in step 2, but the flowchart does not link step 9 to',
+  '   step 2." Write "step 9", never the id ("s9"), and "the flowchart", never "dependsOn".',
+  '4. "certainty": 0-100, how sure you are that a cook following the steps and the flowchart would make',
+  '   the dish correctly. Work it out from your unclear list: 95-100 when it is empty; take off about 5',
+  '   for each minor point and 20-30 for each serious one. Below 60 means the recipe should be checked',
+  '   against the original before anyone cooks it.'
+].join('\n');
+
+var CHECK_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['equipment', 'references', 'unclear', 'certainty'],
+  properties: {
+    equipment: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['kind', 'count', 'other'],
+        properties: {
+          kind: { type: 'string', enum: EQUIPMENT_KINDS },
+          count: { type: 'integer' },
+          other: nullable_('string', 'Name of the equipment when kind is "other", else null')
+        }
+      }
+    },
+    references: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['step', 'words', 'madeIn', 'sure'],
+        properties: {
+          step: { type: 'string' },
+          words: { type: 'string' },
+          madeIn: NULLABLE_STR,
+          sure: { type: 'boolean' }
+        }
+      }
+    },
+    unclear: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['step', 'serious', 'note'],
+        properties: {
+          step: NULLABLE_STR,
+          serious: { type: 'boolean' },
+          note: { type: 'string' }
+        }
+      }
+    },
+    certainty: { type: 'integer' }
+  }
+};
+
+/** The parts of an extracted recipe the check needs, as compact text for Claude. */
+function recipeForCheck_(r) {
+  var lines = ['Title: ' + r.title, '', 'Ingredients:'];
+  r.ingredientGroups.forEach(function (g) {
+    if (g.name) lines.push(g.name + ':');
+    g.items.forEach(function (i) {
+      lines.push('- ' + [i.quantity, i.unit, i.name].filter(Boolean).join(' ') +
+        (i.preparation ? ', ' + i.preparation : '') + (i.optional ? ' (optional)' : ''));
+    });
+  });
+  lines.push('', 'Steps:');
+  r.steps.forEach(function (s) {
+    lines.push(s.id + ' [dependsOn: ' + (s.dependsOn.length ? s.dependsOn.join(', ') : 'none') + '] ' + s.text);
+  });
+  if (r.sourceNotes && r.sourceNotes.length) lines.push('', 'Notes from the original:', r.sourceNotes.join('\n'));
+  return lines.join('\n');
+}
+
+// Checks go through the batch service: half price, results within 24 hours
+// (usually under one). It doesn't accept `fallbacks` or need its beta header.
+var CLAUDE_BATCH_URL = 'https://api.anthropic.com/v1/messages/batches';
+var BATCH_HEADERS = { 'anthropic-version': '2023-06-01' };
+
+function buildCheckRequest_(r) {
+  return {
+    model: CLAUDE_MODEL,
+    max_tokens: 8000,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: CHECK_SCHEMA } },
+    // The instructions are the same for every recipe, so Claude keeps them cached
+    // (a tenth of the price on reuse). One hour, as a batch runs in any order.
+    system: [{ type: 'text', text: CHECK_PROMPT, cache_control: { type: 'ephemeral', ttl: '1h' } }],
+    messages: [{ role: 'user', content: recipeForCheck_(r) }]
+  };
+}
+
+/**
+ * Parses a check response into the fields stored on the recipe:
+ * {equipment, unclear, certainty, references}, or throws.
+ *
+ * Claude traces the references reliably but doesn't always notice when the
+ * flowchart fails to follow one, so that comparison is done here.
+ */
+function parseCheckResponse_(body, r) {
+  var out = parseExtractionResponse_(body);
+  var pos = {};
+  r.steps.forEach(function (s, i) { pos[s.id] = i; });
+  var num = function (id) { return pos[id] + 1; };
+
+  // Every step each step leads back to through dependsOn.
+  var before = {};
+  r.steps.forEach(function (s) {
+    var set = {};
+    s.dependsOn.forEach(function (d) {
+      if (!(d in before)) return; // unknown or later step
+      set[d] = true;
+      Object.keys(before[d]).forEach(function (a) { set[a] = true; });
+    });
+    before[s.id] = set;
+  });
+
+  // Notes are read by cooks: "step 5", not the id "s5".
+  var plain = function (note) {
+    return note.replace(/\b(step )?(s\d+)\b/gi, function (all, word, id) {
+      id = id.toLowerCase();
+      return id in pos ? (word && word[0] === 'S' ? 'Step ' : 'step ') + num(id) : all;
+    });
+  };
+  var unclear = out.unclear.map(function (u) {
+    return { step: u.step in pos ? u.step : null, serious: u.serious, note: plain(u.note) };
+  });
+  var flagged = {};
+  unclear.forEach(function (u) { if (u.step) flagged[u.step] = flagged[u.step] || u.serious; });
+  out.references.forEach(function (ref) {
+    var step = ref.step, from = ref.madeIn;
+    if (!(step in pos) || flagged[step]) return;
+    var item = null;
+    if (from in pos && pos[from] > pos[step]) {
+      item = { serious: true, note: 'Step ' + num(step) + ' uses "' + ref.words + '", which isn\'t made until step ' +
+        num(from) + '. Check the order against the original.' };
+    } else if (from in pos && from !== step && !before[step][from]) {
+      item = { serious: true, note: 'Step ' + num(step) + ' uses "' + ref.words + '" from step ' + num(from) +
+        ', but the flowchart doesn\'t link step ' + num(step) + ' back to step ' + num(from) + '. Check against the original.' };
+    } else if (!ref.sure && flagged[step] === undefined) {
+      item = { serious: false, note: 'Step ' + num(step) + ' says "' + ref.words + '"' +
+        (from in pos ? ', taken to mean what was made in step ' + num(from) : '') + '. Check that is right.' };
+    }
+    if (item) {
+      item.step = step;
+      unclear.push(item);
+      flagged[step] = flagged[step] || item.serious;
+    }
+  });
+
+  var serious = unclear.filter(function (u) { return u.serious; }).length;
+  var fromList = 100 - 25 * serious - 5 * (unclear.length - serious);
+  return {
+    equipment: out.equipment.filter(function (e) { return e.count > 0; }).map(function (e) {
+      return { kind: e.kind, count: e.count, other: e.kind === 'other' ? (e.other || 'other') : null };
+    }),
+    unclear: unclear,
+    certainty: Math.max(0, Math.min(100, out.certainty, fromList)),
+    references: out.references
+  };
+}

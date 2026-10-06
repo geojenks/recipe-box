@@ -172,7 +172,22 @@
       "sourceUrl": null,
       "dishPhoto": null,
       "photoKind": null,
-      "photoCrop": null
+      "photoCrop": null,
+      "equipment": [
+        {
+          "kind": "saucepan",
+          "count": 1,
+          "other": null
+        },
+        {
+          "kind": "frying pan",
+          "count": 1,
+          "other": null
+        }
+      ],
+      "unclear": [],
+      "certainty": 97,
+      "checkVersion": 1
     },
     {
       "addedBy": "Demo",
@@ -287,7 +302,17 @@
       "sourceUrl": null,
       "dishPhoto": null,
       "photoKind": null,
-      "photoCrop": null
+      "photoCrop": null,
+      "equipment": [
+        {
+          "kind": "mixing bowl",
+          "count": 1,
+          "other": null
+        }
+      ],
+      "unclear": [],
+      "certainty": 97,
+      "checkVersion": 1
     },
     {
       "addedBy": "Demo",
@@ -443,7 +468,225 @@
       "sourceUrl": null,
       "dishPhoto": null,
       "photoKind": null,
-      "photoCrop": null
+      "photoCrop": null,
+      "equipment": [
+        {
+          "kind": "cake tin",
+          "count": 1,
+          "other": null
+        },
+        {
+          "kind": "mixing bowl",
+          "count": 2,
+          "other": null
+        }
+      ],
+      "unclear": [],
+      "certainty": 97,
+      "checkVersion": 1
+    },
+    {
+      "addedBy": "Demo",
+      "addedAt": "2026-09-20T10:00:00Z",
+      "photoFileId": null,
+      "sourceFileId": null,
+      "timesAreEstimated": false,
+      "id": "demo-4",
+      "sourceName": "Bread and butter pudding.jpg",
+      "title": "Bread and butter pudding",
+      "description": "Buttered bread baked in a vanilla custard with plump raisins.",
+      "servings": "6",
+      "prepMinutes": 20,
+      "cookMinutes": 35,
+      "totalMinutes": 75,
+      "course": "Dessert",
+      "cuisine": "British",
+      "tags": [
+        "comfort"
+      ],
+      "ingredientGroups": [
+        {
+          "name": null,
+          "items": [
+            {
+              "quantity": "300",
+              "unit": "ml",
+              "name": "double cream",
+              "canonical": "double cream",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "200",
+              "unit": "ml",
+              "name": "whole milk",
+              "canonical": "milk",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            },
+            {
+              "quantity": "50",
+              "unit": "g",
+              "name": "raisins",
+              "canonical": "raisins",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "3",
+              "unit": null,
+              "name": "eggs",
+              "canonical": "eggs",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "75",
+              "unit": "g",
+              "name": "caster sugar",
+              "canonical": "sugar",
+              "preparation": null,
+              "optional": false,
+              "staple": true
+            },
+            {
+              "quantity": "8",
+              "unit": "slices",
+              "name": "white bread",
+              "canonical": "bread",
+              "preparation": "buttered",
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": null,
+              "name": "vanilla pod",
+              "canonical": "vanilla",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            },
+            {
+              "quantity": "1",
+              "unit": "tbsp",
+              "name": "demerara sugar",
+              "canonical": "demerara sugar",
+              "preparation": null,
+              "optional": false,
+              "staple": false
+            }
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "s1",
+          "label": "Infuse the cream",
+          "text": "Put the cream, milk and split vanilla pod in a pan and bring just to the boil, then take off the heat and leave to infuse.",
+          "minutes": 5,
+          "dependsOn": []
+        },
+        {
+          "id": "s2",
+          "label": "Heat oven, butter dish",
+          "text": "Heat the oven to 180C. Butter a baking dish.",
+          "minutes": null,
+          "dependsOn": []
+        },
+        {
+          "id": "s3",
+          "label": "Layer the bread",
+          "text": "Cut the bread into triangles and arrange, overlapping, in the dish.",
+          "minutes": 5,
+          "dependsOn": [
+            "s2"
+          ]
+        },
+        {
+          "id": "s4",
+          "label": "Whisk eggs and sugar",
+          "text": "Whisk the eggs and caster sugar together in a bowl until pale.",
+          "minutes": 3,
+          "dependsOn": []
+        },
+        {
+          "id": "s5",
+          "label": "Plump the raisins",
+          "text": "Now add the raisins to the cream pot and leave for 10 minutes to plump up.",
+          "minutes": 10,
+          "dependsOn": [
+            "s4"
+          ]
+        },
+        {
+          "id": "s6",
+          "label": "Make the custard",
+          "text": "Pour it over the egg mixture, whisking all the time.",
+          "minutes": null,
+          "dependsOn": [
+            "s5"
+          ]
+        },
+        {
+          "id": "s7",
+          "label": "Pour and soak",
+          "text": "Pour the custard over the bread and leave to soak for 20 minutes.",
+          "minutes": 20,
+          "dependsOn": [
+            "s6"
+          ]
+        },
+        {
+          "id": "s8",
+          "label": "Bake",
+          "text": "Sprinkle with demerara and bake for 35 minutes until set and golden.",
+          "minutes": 35,
+          "dependsOn": [
+            "s7"
+          ]
+        }
+      ],
+      "sourceNotes": [],
+      "author": null,
+      "book": null,
+      "sourceUrl": null,
+      "dishPhoto": null,
+      "equipment": [
+        {
+          "kind": "saucepan",
+          "count": 1,
+          "other": null
+        },
+        {
+          "kind": "baking dish",
+          "count": 1,
+          "other": null
+        },
+        {
+          "kind": "mixing bowl",
+          "count": 1,
+          "other": null
+        }
+      ],
+      "unclear": [
+        {
+          "step": "s5",
+          "serious": true,
+          "note": "Step 5 adds the raisins to the cream mixture heated in step 1, but the flowchart links step 5 only to step 4 and not to step 1. Check that step 5 depends on step 1."
+        },
+        {
+          "step": "s7",
+          "serious": true,
+          "note": "Step 7 pours the custard over the bread arranged in step 3, but the flowchart links step 7 only to step 6 and does not link it to step 3. Check that step 7 depends on step 3."
+        }
+      ],
+      "certainty": 50,
+      "checkVersion": 1
     }
   ]
 }

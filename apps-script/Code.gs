@@ -23,6 +23,9 @@ var EXTRACT_VERSION = 2;
 // Bump when photo selection changes: photos are redone from the saved
 // extraction, without sending anything to Claude again.
 var PHOTO_VERSION = 3;
+// Bump when the recipe check (equipment, unclear steps, certainty) changes, so
+// every recipe is checked again. The check reads the extracted text only.
+var CHECK_VERSION = 1;
 var CONTINUE_HANDLER = 'continueProcessing';
 
 // Failures that say nothing about the file: Claude busy, rate-limited, out of
@@ -241,9 +244,136 @@ async function processInboxLocked_() {
     changed = true;
   });
 
+  var unchecked = checkRecipes_(index);
   if (changed) saveIndex_(index);
-  writeStatus_(index, plan.skipped, pending, held);
+  writeStatus_(index, plan.skipped, pending, held, unchecked);
   scheduleContinuation_(outOfTime());
+}
+
+function recipesToCheck_(index) {
+  return index.recipes.filter(function (r) {
+    return r.checkVersion !== CHECK_VERSION &&
+      ((r.checkAttempts || 0) < MAX_ATTEMPTS || isServiceError_(r.checkError));
+  });
+}
+
+/**
+ * Checks recipes that haven't been checked yet, through Anthropic's batch
+ * service. Each run first collects the batch sent by an earlier run, if Claude
+ * has finished it, then sends every recipe still to check as one new batch.
+ * Sets on each recipe:
+ *   equipment   [{kind, count, other}]
+ *   unclear     [{step, serious, note}] places the steps or flowchart may be wrong
+ *   certainty   0-100
+ * index.checkBatch holds the batch Claude is working on: {id, sent, recipes},
+ * where recipes maps each recipe id to a fingerprint of what was sent, so a
+ * recipe edited in the meantime isn't given an out-of-date result.
+ * Saves as it goes. Returns how many are still to check.
+ */
+function checkRecipes_(index) {
+  try {
+    var key = requireProp_('ANTHROPIC_API_KEY');
+    var batch = index.checkBatch;
+    if (batch) {
+      var info;
+      try {
+        info = batchRequest_(key, 'get', CLAUDE_BATCH_URL + '/' + batch.id);
+      } catch (e) {
+        if (!/not_found/.test(e.message)) throw e;
+        info = null; // gone (or a different API key): send again below
+      }
+      if (info && info.processing_status !== 'ended') return recipesToCheck_(index).length;
+      if (info) collectCheckResults_(index, key, info, batch);
+      delete index.checkBatch;
+      saveIndex_(index);
+    }
+
+    var todo = recipesToCheck_(index).filter(function (r) { return /^[\w-]{1,64}$/.test(r.id); });
+    if (todo.length) {
+      var sent = {};
+      var created = batchRequest_(key, 'post', CLAUDE_BATCH_URL, {
+        requests: todo.map(function (r) {
+          sent[r.id] = checkDigest_(r);
+          return { custom_id: r.id, params: buildCheckRequest_(r) };
+        })
+      });
+      index.checkBatch = { id: created.id, sent: new Date().toISOString(), recipes: sent };
+      saveIndex_(index);
+      Logger.log('Sent ' + recipesCount_(todo.length) + ' to Claude to check (batch ' + created.id + ').');
+    }
+  } catch (e) {
+    Logger.log('Could not check recipes: ' + (e.message || e)); // tried again next run
+  }
+  return recipesToCheck_(index).length;
+}
+
+/** Stores the results of a finished batch on the recipes it covered. */
+function collectCheckResults_(index, key, info, batch) {
+  var resp = UrlFetchApp.fetch(info.results_url, {
+    headers: Object.assign({ 'x-api-key': key }, BATCH_HEADERS), muteHttpExceptions: true
+  });
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('HTTP ' + resp.getResponseCode() + ' fetching the results of batch ' + batch.id);
+  }
+  var byId = {};
+  index.recipes.forEach(function (r) { byId[r.id] = r; });
+  var done = 0;
+  resp.getContentText().split('\n').forEach(function (line) {
+    if (!line.trim()) return;
+    var item = JSON.parse(line);
+    var r = byId[item.custom_id];
+    // Removed or changed since it was sent: it goes in the next batch instead.
+    if (!r || r.checkVersion === CHECK_VERSION || checkDigest_(r) !== batch.recipes[item.custom_id]) return;
+    var res = item.result;
+    if (res.type === 'expired' || res.type === 'canceled') return; // sent again in the next batch
+    try {
+      if (res.type !== 'succeeded') {
+        var err = (res.error && res.error.error) || res.error || {};
+        throw new Error('Claude API error: ' + err.type + ': ' + err.message);
+      }
+      var result = parseCheckResponse_(res.message, r);
+      r.equipment = result.equipment;
+      r.unclear = result.unclear;
+      r.certainty = result.certainty;
+      r.checkVersion = CHECK_VERSION;
+      delete r.checkError;
+      delete r.checkAttempts;
+      done++;
+    } catch (e) {
+      var message = String(e.message || e);
+      if (!isServiceError_(message)) r.checkAttempts = (r.checkAttempts || 0) + 1;
+      r.checkError = message;
+      Logger.log('Could not check ' + r.title + ': ' + message);
+    }
+  });
+  Logger.log('Claude checked ' + recipesCount_(done) + ' (batch ' + batch.id + ').');
+}
+
+/** A call to the batch service; returns the parsed reply or throws. */
+function batchRequest_(key, method, url, payload) {
+  var options = { method: method, headers: Object.assign({ 'x-api-key': key }, BATCH_HEADERS), muteHttpExceptions: true };
+  if (payload) {
+    options.contentType = 'application/json';
+    options.payload = JSON.stringify(payload);
+  }
+  var resp = UrlFetchApp.fetch(url, options);
+  var body;
+  try {
+    body = JSON.parse(resp.getContentText());
+  } catch (e) {
+    throw new Error('HTTP ' + resp.getResponseCode() + ' from the Claude batch service');
+  }
+  if (body.type === 'error') throw new Error('Claude API error: ' + body.error.type + ': ' + body.error.message);
+  return body;
+}
+
+function recipesCount_(n) {
+  return n + (n === 1 ? ' recipe' : ' recipes');
+}
+
+/** A short fingerprint of the text a recipe's check is based on. */
+function checkDigest_(r) {
+  return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, recipeForCheck_(r), Utilities.Charset.UTF_8));
 }
 
 /** One-off trigger that carries on a minute later when a run ran out of time. */
@@ -269,6 +399,7 @@ async function retryFailed() {
     var s = index.sources[id];
     if (s.status === 'error') { s.attempts = 0; count++; }
   });
+  index.recipes.forEach(function (r) { delete r.checkAttempts; });
   saveIndex_(index);
   Logger.log('Trying ' + count + ' failed files again.');
   await processInbox();
@@ -552,7 +683,7 @@ function trashQuietly_(fileId) {
 }
 
 /** Mirrors processing state into the Status tab so people can see what happened to their upload. */
-function writeStatus_(index, skipped, pending, held) {
+function writeStatus_(index, skipped, pending, held, unchecked) {
   var sheet = SpreadsheetApp.openById(requireProp_('SHEET_ID')).getSheetByName('Status');
   var now = new Date();
   var rows = Object.keys(index.sources).map(function (id) {
@@ -566,6 +697,12 @@ function writeStatus_(index, skipped, pending, held) {
   });
   held.forEach(function (name) { rows.push([name, 'waiting', '', 'Claude was unavailable; tries again next hour', now]); });
   pending.forEach(function (name) { rows.push([name, 'waiting', '', 'Will be processed in the next few minutes', now]); });
+  if (unchecked) {
+    rows.push(['(checking recipes for unclear steps)', 'waiting', unchecked, recipesCount_(unchecked) + (index.checkBatch
+      ? ' with Claude to check since ' + Utilities.formatDate(new Date(index.checkBatch.sent), Session.getScriptTimeZone(), 'd MMM HH:mm') +
+        '; results come in on an hourly run, usually the next one'
+      : ' still to check; sent to Claude on the next hourly run'), now]);
+  }
   skipped.forEach(function (name) { rows.push([name, 'unsupported file type', 0, 'Use PDF, Google Doc, Word, image or text', now]); });
   rows.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
 
