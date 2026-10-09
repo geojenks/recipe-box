@@ -826,8 +826,8 @@ function webRecipe_(html, url) {
   var host = (url.match(/^https?:\/\/(?:www\.)?([^\/?#:]+)/i) || [])[1] || url;
   var site = metaContent_(html, 'og:site_name') || host;
   var recipe = jsonLdRecipe_(html);
-  var title = (recipe && cleanText_(String(recipe.name || ''))) || metaContent_(html, 'og:title') ||
-    cleanText_(((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]) || '');
+  var title = (recipe && cleanText_(String(recipe.name || ''))) || pageTitle_(metaContent_(html, 'og:title') ||
+    cleanText_(((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]) || ''), site, host);
   var lines = [title, 'From ' + site + ': ' + url];
 
   if (recipe) {
@@ -974,6 +974,18 @@ function duration_(iso) {
   return [h ? h + ' hr' : '', rest ? rest + ' min' : ''].join(' ').trim();
 }
 
+/** "Chickpeas cacio e pepe recipe | Ottolenghi Recipes" -> "Chickpeas cacio e pepe". */
+function pageTitle_(title, site, host) {
+  var squash = function (t) { return String(t).toLowerCase().replace(/[^a-z0-9]/g, ''); };
+  var names = [squash(site), squash(host.replace(/\.[a-z.]+$/i, ''))].filter(Boolean);
+  for (var m; (m = /^(.*\S)\s+[|\u2013\u2014-]\s+([^|\u2013\u2014]+)$/.exec(title));) {
+    var last = squash(m[2]);
+    if (!names.some(function (n) { return last.indexOf(n) >= 0 || n.indexOf(last) >= 0; })) break;
+    title = m[1];
+  }
+  return title.replace(/\s+recipe$/i, '').trim();
+}
+
 /** Mirrors processing state into the Status tab so people can see what happened to their upload. */
 function writeStatus_(index, skipped, pending, held, unchecked) {
   var sheet = SpreadsheetApp.openById(requireProp_('SHEET_ID')).getSheetByName('Status');
@@ -996,22 +1008,34 @@ function writeStatus_(index, skipped, pending, held, unchecked) {
       : ' still to check; sent to Claude on the next hourly run'), now]);
   }
   skipped.forEach(function (name) { rows.push([name, 'unsupported file type', 0, 'Use PDF, Google Doc, Word, image or text', now]); });
-  // Web addresses not yet fetched, or that failed recently. Added ones show as their file.
+  rows.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
+
+  // Web addresses at the top: those not fetched yet, and those added in the last fortnight.
+  var links = [];
   try {
     var recent = Date.now() - LINK_NOTICE_DAYS * 24 * 3600 * 1000;
+    var byName = {};
+    Object.keys(index.sources).forEach(function (id) { byName[index.sources[id].name] = index.sources[id]; });
     linkRows_(linksSheet_()).forEach(function (r) {
       var url = String(r[4] || '').trim();
-      if (!url || r[5] === 'added') return;
+      var who = 'Added by ' + (r[3] || r[2] || 'someone') + '. ';
+      if (!url) return;
       if (!r[5] || r[5] === 'waiting') {
-        rows.push([url, 'waiting', '', 'Added by ' + (r[3] || r[2]) + '. Fetched on the next hourly run.', now]);
-      } else if (!(new Date(r[1]).getTime() < recent)) {
-        rows.push([url, r[5] === 'error' ? 'error' : r[5], 0, r[6], now]);
+        links.push([url, 'waiting', '', who + 'Fetched on the next hourly run.' + (r[6] ? ' Last try: ' + r[6] : ''), now]);
+      } else if (new Date(r[1]).getTime() < recent) {
+        return;
+      } else if (r[5] === 'added') {
+        var src = byName[r[7]];
+        links.push([url, src ? src.status : 'waiting', src ? src.recipes : '',
+          who + 'Saved as "' + r[7] + '" in the folder "' + WEB_FOLDER_NAME + '".' + (src ? '' : ' Read by Claude on the next run.'), now]);
+      } else {
+        links.push([url, r[5], 0, who + r[6], now]);
       }
     });
   } catch (e) {
     Logger.log('Could not list web addresses: ' + (e.message || e));
   }
-  rows.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
+  rows = links.reverse().concat(rows); // newest first
 
   if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).clearContent();
   if (rows.length) sheet.getRange(2, 1, rows.length, 5).setValues(rows);
