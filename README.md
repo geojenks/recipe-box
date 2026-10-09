@@ -20,7 +20,8 @@ Shared Drive folder "Recipe Box"   <- everyone uploads here (subfolders OK)
 ├── Lasagne.pdf
 ├── Lasagne.jpg                    <- same name = photo for that recipe
 ├── Grandma's scones.jpg           <- a photo of a recipe card is fine too
-├── Recipe Box notes (Sheet)       <- Notes tab + Status tab (created by setup)
+├── Added from the web/            <- recipes added by web address (created by the job)
+├── Recipe Box notes (Sheet)       <- Notes, Status and Links tabs (created by setup and the job)
 └── _website data (do not edit)/   <- recipes.json + generated photos (created by setup)
 
 apps-script/   background job (copy into script.google.com)
@@ -77,6 +78,7 @@ When someone first signs in, Google warns "Google hasn't verified this app". Tha
 ## Day to day
 
 - **Add a recipe:** upload it to the Recipe Box folder. It shows up within the hour.
+- **Add a recipe from a website:** paste its web address on the site's **Add recipes** page. The address goes in the Links tab of the notes sheet, so anyone who can write notes can do this. On the next hourly run the job fetches the page, keeps the recipe as a text file (from the recipe data most recipe sites embed, or the page text if there is none) in the "Added from the web" folder, and saves the site's photo of the dish beside it. Some sites refuse to be read, or need a sign-in; for those, save the page as a PDF and upload that instead.
 - **Photo of the dish:** if the file contains a photo of the food, it's used automatically: on the recipe card and at the top of the recipe. Claude reports where the photo is on the page; the site cuts it out of a picture of page 1, or uses the original JPEG when the PDF contains one. To use a different photo, upload an image with the same name as the recipe file (`Lasagne.pdf` + `Lasagne.jpg`). With neither, the recipe card shows a picture of the recipe's first page and the recipe page has no photo at the top.
 - **Fix a recipe:** edit or replace the file, and it is processed again. **Remove a recipe:** delete the file.
 - **Something didn't appear?** The site's **Add recipes** page (and the Status tab of the notes sheet) shows each file's status and any error. A file that fails 3 times is skipped until it changes.

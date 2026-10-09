@@ -601,6 +601,11 @@ body.cooking { overflow: hidden; }
 .inbox ol li::marker { font-weight: 900; color: var(--accent); }
 .inbox a:not(.back) { color: var(--link); font-weight: 750; }
 .access { max-width: 70ch; margin: 1rem 0; }
+.link-form { display: flex; gap: .6rem; max-width: 70ch; }
+.link-form .field { flex: 1; min-width: 0; }
+.link-form .button { flex: none; min-height: 48px; padding-inline: 1.3rem; }
+.link-msg { max-width: 70ch; margin: .7rem 0 0; font-weight: 650; }
+.link-help { max-width: 70ch; margin: .7rem 0 0; color: var(--muted); font-size: .92rem; }
 .table-wrap { overflow-x: auto; border-radius: 18px; background: var(--surface); box-shadow: 0 1px 2px rgb(59 42 33 / .06); }
 .status { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .status th { text-align: left; font-size: .8rem; font-weight: 850; color: var(--muted); padding: .75rem .9rem .5rem; border-bottom: 1.5px solid var(--rule); }

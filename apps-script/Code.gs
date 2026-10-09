@@ -147,6 +147,13 @@ async function processInboxLocked_() {
   var sheetId = requireProp_('SHEET_ID');
   var index = loadIndex_();
 
+  // Web addresses added on the site become files first, so they're extracted in this same run.
+  try {
+    processLinks_(inbox, function () { return Date.now() - started > TIME_BUDGET_MS / 3; });
+  } catch (e) {
+    Logger.log('Could not add recipes from web addresses: ' + (e.message || e));
+  }
+
   var files = [];
   collectFiles_(inbox, dataFolderId, files);
   files = files.filter(function (f) { return f.getId() !== sheetId; });
@@ -513,7 +520,9 @@ function decorateRecipe_(r, i, file) {
   r.id = file.getId() + '-' + i;
   r.sourceFileId = file.getId();
   r.sourceName = file.getName();
-  r.addedBy = owner ? (owner.getName() || owner.getEmail()) : null;
+  // Recipes from a web address are saved by the job, so the file says who asked for it.
+  var asked = /^Added by (.+?) from /.exec(file.getDescription() || '');
+  r.addedBy = asked ? asked[1] : owner ? (owner.getName() || owner.getEmail()) : null;
   r.addedAt = file.getDateCreated().toISOString();
   return r;
 }
@@ -553,6 +562,11 @@ async function attachPhotos_(file, uploaded, sourceId, recipes, pdf) {
         setAll(save(embedded, ''), 'dish');
         return { incomplete: false };
       }
+    }
+
+    if (inputKind_(file) === 'text') { // a picture of plain text is no use as a photo
+      setAll(null, null);
+      return { incomplete: false };
     }
 
     var crops = recipes.map(function (r) { return cleanCrop_(r.dishPhoto); });
@@ -682,6 +696,284 @@ function trashQuietly_(fileId) {
   try { DriveApp.getFileById(fileId).setTrashed(true); } catch (e) { /* already gone */ }
 }
 
+// ---------- recipes added from a web address ----------
+
+var LINKS_SHEET = 'Links';
+var LINKS_HEADERS = ['id', 'timestamp', 'email', 'name', 'url', 'status', 'detail', 'file', 'attempts'];
+var WEB_FOLDER_NAME = 'Added from the web';
+var LINKS_PER_RUN = 10;
+var LINK_NOTICE_DAYS = 14; // how long a failed link stays on the Status tab
+var LINK_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+
+/** The Links tab the website adds web addresses to; created on first use. */
+function linksSheet_() {
+  var ss = SpreadsheetApp.openById(requireProp_('SHEET_ID'));
+  var sheet = ss.getSheetByName(LINKS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(LINKS_SHEET);
+    sheet.appendRow(LINKS_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function linkRows_(sheet) {
+  var last = sheet.getLastRow();
+  return last < 2 ? [] : sheet.getRange(2, 1, last - 1, LINKS_HEADERS.length).getValues();
+}
+
+/**
+ * Fetches the web addresses people added on the website and saves each recipe
+ * into the shared folder as a text file, with the page's photo under the same
+ * name. The rest of the run then extracts it like any other upload, and it can be
+ * edited or deleted in Drive like one too.
+ */
+function processLinks_(inbox, outOfTime) {
+  var sheet = linksSheet_();
+  var rows = linkRows_(sheet);
+  var folder = null;
+  var names = null; // lower-case base names already in the folder, so photos pair with the right file
+  var done = 0;
+  for (var i = 0; i < rows.length && done < LINKS_PER_RUN && !outOfTime(); i++) {
+    var row = rows[i];
+    var url = String(row[4] || '').trim();
+    if (!url || (row[5] && row[5] !== 'waiting')) continue;
+    var attempts = Number(row[8]) || 0;
+    var result;
+    var earlier = rows.filter(function (r) { return r[5] === 'added' && String(r[4]).trim() === url; })[0];
+    if (earlier) {
+      result = { status: 'already added', detail: 'Already added as ' + earlier[7] + '.' };
+    } else {
+      try {
+        if (!folder) {
+          folder = webFolder_(inbox);
+          names = {};
+          var files = [];
+          collectFiles_(inbox, requireProp_('DATA_FOLDER_ID'), files);
+          files.forEach(function (f) { names[f.getName().replace(/\.[^.]+$/, '').trim().toLowerCase()] = true; });
+        }
+        result = saveLink_(url, row, folder, names);
+      } catch (e) {
+        var message = String(e.message || e);
+        Logger.log('Could not fetch ' + url + ': ' + message);
+        attempts++;
+        result = attempts < MAX_ATTEMPTS
+          ? { status: 'waiting', detail: message }
+          : { status: 'error', detail: 'Could not reach the website (' + message + '). Save the page as a PDF and upload that instead.' };
+      }
+    }
+    row[5] = result.status;
+    row[7] = result.file || '';
+    sheet.getRange(i + 2, 6, 1, 4).setValues([[result.status, result.detail || '', result.file || '', attempts]]);
+    done++;
+  }
+}
+
+function webFolder_(inbox) {
+  var it = inbox.getFoldersByName(WEB_FOLDER_NAME);
+  return it.hasNext() ? it.next() : inbox.createFolder(WEB_FOLDER_NAME);
+}
+
+/** Fetches one web address and saves its recipe. Returns the row's {status, detail, file}. */
+function saveLink_(url, row, folder, names) {
+  if (!/^https?:\/\/[^\s]+$/i.test(url)) return { status: 'error', detail: 'That is not a web address.' };
+  var resp = UrlFetchApp.fetch(url, {
+    muteHttpExceptions: true, followRedirects: true,
+    headers: { 'User-Agent': LINK_USER_AGENT, 'Accept-Language': 'en-GB,en;q=0.9' }
+  });
+  var code = resp.getResponseCode();
+  if (code >= 500) throw new Error('HTTP ' + code); // the website is having trouble: try again next run
+  if (code !== 200) {
+    return {
+      status: 'error',
+      detail: 'The website would not let the job read the page (HTTP ' + code + '). Save the page as a PDF and upload that to the recipe folder instead.'
+    };
+  }
+  var page = webRecipe_(resp.getContentText(), url);
+  if (!page) {
+    return {
+      status: 'error',
+      detail: 'No recipe found on that page. If it needs a sign-in, save the page as a PDF and upload that instead.'
+    };
+  }
+
+  var base = page.title;
+  for (var n = 2; names[base.toLowerCase()]; n++) base = page.title + ' (' + n + ')';
+  names[base.toLowerCase()] = true;
+  var file = folder.createFile(base + '.txt', page.text, MimeType.PLAIN_TEXT);
+  file.setDescription('Added by ' + (row[3] || row[2] || 'someone') + ' from ' + url);
+
+  if (page.image) {
+    try {
+      var img = UrlFetchApp.fetch(page.image, { muteHttpExceptions: true, headers: { 'User-Agent': LINK_USER_AGENT } });
+      var type = String(img.getHeaders()['Content-Type'] || img.getHeaders()['content-type'] || '').split(';')[0].trim().toLowerCase();
+      if (img.getResponseCode() === 200 && IMAGE_TYPES.indexOf(type) >= 0) {
+        folder.createFile(img.getBlob().setContentType(type).setName(base + '.' + type.split('/')[1].replace('jpeg', 'jpg')));
+      }
+    } catch (e) {
+      Logger.log('No photo for ' + url + ': ' + e);
+    }
+  }
+  return { status: 'added', file: base + '.txt' };
+}
+
+/**
+ * The recipe on a web page as plain text for Claude, from the page's recipe data
+ * (schema.org JSON-LD, which most recipe sites include) or else from its visible
+ * text. Returns {title, text, image} or null if there's no recipe to be had.
+ */
+function webRecipe_(html, url) {
+  var host = (url.match(/^https?:\/\/(?:www\.)?([^\/?#:]+)/i) || [])[1] || url;
+  var site = metaContent_(html, 'og:site_name') || host;
+  var recipe = jsonLdRecipe_(html);
+  var title = (recipe && cleanText_(String(recipe.name || ''))) || metaContent_(html, 'og:title') ||
+    cleanText_(((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]) || '');
+  var lines = [title, 'From ' + site + ': ' + url];
+
+  if (recipe) {
+    var author = [].concat(recipe.author || []).map(function (a) { return typeof a === 'string' ? a : a && a.name; })
+      .filter(Boolean).join(', ');
+    if (author) lines.push('By ' + cleanText_(author));
+    var serves = [].concat(recipe.recipeYield || []).map(String).sort(function (a, b) { return b.length - a.length; })[0];
+    if (serves) lines.push('Serves / makes: ' + cleanText_(serves));
+    var times = [['Prep', recipe.prepTime], ['Cook', recipe.cookTime], ['Total', recipe.totalTime]]
+      .map(function (t) { var d = duration_(t[1]); return d ? t[0] + ': ' + d : null; }).filter(Boolean);
+    if (times.length) lines.push(times.join('. '));
+    if (recipe.description) lines.push('', cleanText_(String(recipe.description)));
+    lines.push('', 'Ingredients');
+    [].concat(recipe.recipeIngredient || recipe.ingredients || []).forEach(function (i) { lines.push('- ' + cleanText_(String(i))); });
+    lines.push('', 'Method');
+    var step = 0;
+    instructionLines_(recipe.recipeInstructions).forEach(function (l) {
+      lines.push(l.section ? '\n' + l.section : (++step) + '. ' + l.text);
+    });
+    if (recipe.recipeNotes || recipe.notes) lines.push('', 'Notes', cleanText_(String(recipe.recipeNotes || recipe.notes)));
+  } else {
+    var text = pageText_(html);
+    if (text.length < 200) return null;
+    lines.push('', text);
+  }
+
+  var name = cleanText_(title).replace(/[\\\/:*?"<>|#\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80).trim();
+  return { title: name || 'Recipe from ' + host, text: lines.join('\n'), image: absoluteUrl_(imageOf_(recipe) || metaContent_(html, 'og:image'), url) };
+}
+
+/** The first schema.org Recipe in the page's JSON-LD that has ingredients and a method, else null. */
+function jsonLdRecipe_(html) {
+  var re = /<script\b[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
+  var found = null;
+  var visit = function (node) {
+    if (found || !node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(visit); return; }
+    var types = [].concat(node['@type'] || []).map(String);
+    if (types.indexOf('Recipe') >= 0 && (node.recipeIngredient || node.ingredients) && node.recipeInstructions) {
+      found = node;
+      return;
+    }
+    visit(node['@graph']);
+    visit(node.mainEntity);
+    visit(node.mainEntityOfPage);
+  };
+  var m;
+  while (!found && (m = re.exec(html))) {
+    var raw = m[1].replace(/^\s*(?:<!--|\/\/\s*<!\[CDATA\[)/, '').replace(/(?:-->|\/\/\s*\]\]>)\s*$/, '').trim();
+    try { visit(JSON.parse(raw)); } catch (e) { /* malformed JSON-LD: try the next block */ }
+  }
+  return found;
+}
+
+/** Method steps as [{text}] and section headings as [{section}], from any of the shapes sites use. */
+function instructionLines_(ins) {
+  if (!ins) return [];
+  if (typeof ins === 'string') {
+    return cleanText_(ins).split(/\n+/).map(function (t) { return t.replace(/^\d+[.)]\s*/, '').trim(); })
+      .filter(Boolean).map(function (t) { return { text: t }; });
+  }
+  if (Array.isArray(ins)) return ins.reduce(function (out, i) { return out.concat(instructionLines_(i)); }, []);
+  if (ins.itemListElement) { // a HowToSection
+    var heading = ins.name ? [{ section: cleanText_(String(ins.name)) }] : [];
+    return heading.concat(instructionLines_(ins.itemListElement));
+  }
+  var text = cleanText_(String(ins.text || ins.name || ''));
+  return text ? [{ text: text }] : [];
+}
+
+function imageOf_(recipe) {
+  if (!recipe) return null;
+  var img = [].concat(recipe.image || [])[0];
+  return typeof img === 'string' ? img : img && (img.url || img.contentUrl) || null;
+}
+
+function absoluteUrl_(link, page) {
+  if (!link) return null;
+  link = String(link).trim();
+  if (/^https?:\/\//i.test(link)) return link;
+  if (/^\/\//.test(link)) return 'https:' + link;
+  var origin = (page.match(/^https?:\/\/[^\/?#]+/i) || [])[0];
+  return origin && /^\//.test(link) ? origin + link : null;
+}
+
+/** The content of a <meta property|name="..."> tag. */
+function metaContent_(html, prop) {
+  var tags = html.match(/<meta\b[^>]*>/gi) || [];
+  for (var i = 0; i < tags.length; i++) {
+    var key = attr_(tags[i], 'property') || attr_(tags[i], 'name');
+    if (key && key.toLowerCase() === prop) return cleanText_(attr_(tags[i], 'content') || '') || null;
+  }
+  return null;
+}
+
+function attr_(tag, name) {
+  var m = tag.match(new RegExp('\\b' + name + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\'|([^\\s>]+))', 'i'));
+  return m ? (m[1] || m[2] || m[3] || '') : null;
+}
+
+/** The readable text of a page without its scripts, menus and footers, preferring <main> or <article>. */
+function pageText_(html) {
+  var s = html.replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|svg|template|iframe|nav|header|footer)\b[\s\S]*?<\/\1\s*>/gi, ' ');
+  var main = s.match(/<main\b[\s\S]*<\/main\s*>/i) || s.match(/<article\b[\s\S]*<\/article\s*>/i);
+  if (main && cleanText_(main[0]).length > 500) s = main[0];
+  return cleanText_(s).slice(0, 60000);
+}
+
+var ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '\u2019', lsquo: '\u2018', rdquo: '\u201d',
+  ldquo: '\u201c', ndash: '\u2013', mdash: '\u2014', hellip: '\u2026', deg: '\u00b0', frac12: '\u00bd', frac14: '\u00bc',
+  frac34: '\u00be', frac13: '\u2153', frac23: '\u2154', times: '\u00d7', pound: '\u00a3', eacute: '\u00e9', egrave: '\u00e8',
+  ecirc: '\u00ea', agrave: '\u00e0', aacute: '\u00e1', iacute: '\u00ed', oacute: '\u00f3', uacute: '\u00fa', ccedil: '\u00e7',
+  ntilde: '\u00f1', auml: '\u00e4', ouml: '\u00f6', uuml: '\u00fc', szlig: '\u00df', bull: '\u2022', middot: '\u00b7'
+};
+
+function decodeEntities_(s) {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+\d*);/gi, function (m, e) {
+    if (e.charAt(0) !== '#') return ENTITIES[e] || ENTITIES[e.toLowerCase()] || m;
+    var code = /^#x/i.test(e) ? parseInt(e.slice(2), 16) : Number(e.slice(1));
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+  });
+}
+
+/** HTML to plain text: block tags become line breaks, list items "- ", entities decoded. */
+function cleanText_(s) {
+  s = String(s || '')
+    .replace(/<li\b[^>]*>/gi, '\n- ')
+    .replace(/<(?:br|hr)\b[^>]*>|<\/?(?:p|div|section|ul|ol|h[1-6]|tr|table|blockquote|figure)\b[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ');
+  s = decodeEntities_(decodeEntities_(s)); // some sites encode twice ("&amp;#8217;")
+  return s.split('\n').map(function (l) { return l.replace(/[ \t\u00a0]+/g, ' ').trim(); })
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** "PT1H30M" -> "1 hr 30 min"; null if there's no time in it. */
+function duration_(iso) {
+  var m = String(iso || '').match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/i);
+  if (!m) return null;
+  var mins = ((Number(m[1]) || 0) * 24 + (Number(m[2]) || 0)) * 60 + (Number(m[3]) || 0);
+  if (!mins) return null;
+  var h = Math.floor(mins / 60), rest = mins % 60;
+  return [h ? h + ' hr' : '', rest ? rest + ' min' : ''].join(' ').trim();
+}
+
 /** Mirrors processing state into the Status tab so people can see what happened to their upload. */
 function writeStatus_(index, skipped, pending, held, unchecked) {
   var sheet = SpreadsheetApp.openById(requireProp_('SHEET_ID')).getSheetByName('Status');
@@ -704,6 +996,21 @@ function writeStatus_(index, skipped, pending, held, unchecked) {
       : ' still to check; sent to Claude on the next hourly run'), now]);
   }
   skipped.forEach(function (name) { rows.push([name, 'unsupported file type', 0, 'Use PDF, Google Doc, Word, image or text', now]); });
+  // Web addresses not yet fetched, or that failed recently. Added ones show as their file.
+  try {
+    var recent = Date.now() - LINK_NOTICE_DAYS * 24 * 3600 * 1000;
+    linkRows_(linksSheet_()).forEach(function (r) {
+      var url = String(r[4] || '').trim();
+      if (!url || r[5] === 'added') return;
+      if (!r[5] || r[5] === 'waiting') {
+        rows.push([url, 'waiting', '', 'Added by ' + (r[3] || r[2]) + '. Fetched on the next hourly run.', now]);
+      } else if (!(new Date(r[1]).getTime() < recent)) {
+        rows.push([url, r[5] === 'error' ? 'error' : r[5], 0, r[6], now]);
+      }
+    });
+  } catch (e) {
+    Logger.log('Could not list web addresses: ' + (e.message || e));
+  }
   rows.sort(function (a, b) { return String(a[0]).localeCompare(String(b[0])); });
 
   if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).clearContent();

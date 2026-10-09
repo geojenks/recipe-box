@@ -397,9 +397,27 @@ async function deleteNote(note) {
 }
 
 async function loadStatus() {
-  if (DEMO) return [['example.pdf', 'ok', '1', '', new Date().toISOString()]];
+  if (DEMO) {
+    return [['example.pdf', 'ok', '1', '', new Date().toISOString()],
+      ...demoLinks().map((url) => [url, 'waiting', '', `Added by ${state.user?.name || 'you'}. Fetched on the next hourly run.`])];
+  }
   const res = await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Status!A2:E')}`);
   return (await res.json()).values || [];
+}
+
+const demoLinks = () => { try { return JSON.parse(localStorage.getItem('rb-demo-links') || '[]'); } catch { return []; } };
+
+/** Asks the background job to fetch a recipe from a web address, via the Links tab of the notes sheet. */
+async function addLink(url) {
+  if (DEMO) {
+    localStorage.setItem('rb-demo-links', JSON.stringify([...demoLinks(), url]));
+    return;
+  }
+  await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Links!A:E')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [[crypto.randomUUID(), new Date().toISOString(), state.user.email, state.user.name, url]] }),
+  });
 }
 
 /** Can this user upload to the recipe folder, and who owns it? */
@@ -1726,9 +1744,17 @@ async function renderInbox() {
     <section class="inbox">
       <a href="#/" class="back">${icon('back')} All recipes</a>
       <header class="page-head"><h1>Add recipes</h1>
-        <p class="lede">Recipes are added in Google Drive, not on this site. Anything put in the shared recipe folder appears here within the hour.</p></header>
+        <p class="lede">Add a recipe from a web address, or put a file in the shared recipe folder in Google Drive. New recipes appear here within the hour.</p></header>
+      <h2 class="section-title">From a web address</h2>
+      <form id="link-form" class="link-form">
+        <label class="field"><span class="vh">Web address of a recipe</span>${icon('link')}
+          <input id="link-url" type="url" inputmode="url" autocomplete="off" placeholder="Web address of a recipe" required></label>
+        <button class="button primary" type="submit">Add</button>
+      </form>
+      <p id="link-msg" class="link-msg" role="status" hidden></p>
+      <p class="link-help">The page is fetched on the next hourly run, with its photo. If a website won't let it be read, or it needs a sign-in, save the page as a PDF and upload that instead.</p>
       <div id="access" class="access"></div>
-      <h2 class="section-title">How to add one</h2>
+      <h2 class="section-title">From a file</h2>
       <ol>
         <li>Open the <a href="${folderUrl}" target="_blank" rel="noopener">shared recipe folder in Google Drive</a>.</li>
         <li>Upload a PDF, a photo of a recipe (cookbook page, handwritten card), a Google Doc, a Word file or a text file. Subfolders are fine.</li>
@@ -1744,14 +1770,19 @@ async function renderInbox() {
   app.onclick = null;
   app.onchange = null;
 
+  setupLinkForm();
   inboxAccess().then(({ canAdd, owners }) => {
     const el = document.getElementById('access');
     if (!el || canAdd) return;
     const who = owners.length ? esc(owners.join(' or ')) : 'whoever shares the recipe folder with you';
-    el.innerHTML = `<div class="slip"><p><b>Your account can read the recipe folder but not add to it.</b></p>
-      <p>To add recipes, ask ${who} to make you an editor of the folder. Until then you can still browse, search and cook from everything here.</p></div>`;
+    el.innerHTML = `<div class="slip"><p><b>Your account can read the recipe folder but not add files to it.</b></p>
+      <p>To add files, ask ${who} to make you an editor of the folder.</p></div>`;
   });
 
+  showStatus();
+}
+
+async function showStatus() {
   try {
     const rows = await loadStatus();
     const el = document.getElementById('status');
@@ -1764,6 +1795,44 @@ async function renderInbox() {
     const el = document.getElementById('status');
     if (el) el.innerHTML = `<p class="error">Could not load status: ${esc(e.message)}</p>`;
   }
+}
+
+async function setupLinkForm() {
+  const form = document.getElementById('link-form');
+  const msg = document.getElementById('link-msg');
+  const say = (html, bad) => { msg.hidden = false; msg.className = `link-msg${bad ? ' error' : ''}`; msg.innerHTML = html; };
+  const writable = await canWriteNotes();
+  if (!form.isConnected) return;
+  if (!writable) {
+    form.hidden = true;
+    say('Your account can read the recipe book but not add web addresses. Ask whoever owns the shared recipe folder for edit access to the notes sheet.');
+    return;
+  }
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const box = document.getElementById('link-url');
+    const url = box.value.trim();
+    if (!/^https?:\/\/\S+$/i.test(url)) return say('That doesn’t look like a web address. It should start with https://', true);
+    e.submitter.disabled = true;
+    try {
+      await addLink(url);
+      box.value = '';
+      say('Added. It’ll be fetched on the next hourly run, then appear in the book. Progress shows under Processing status below.');
+      showStatus();
+    } catch (err) {
+      if (/Unable to parse range/i.test(err.message)) {
+        say('The background job hasn’t been updated for web addresses yet. Whoever runs it needs to paste in the new Code.gs and run it once.', true);
+      } else if (err.status === 403) {
+        state.canNote = false;
+        form.hidden = true;
+        say('Your account can’t add web addresses. Ask whoever owns the shared recipe folder for edit access to the notes sheet.', true);
+      } else {
+        say(`Could not add it: ${esc(err.message)}`, true);
+      }
+    } finally {
+      e.submitter.disabled = false;
+    }
+  };
 }
 
 /**
