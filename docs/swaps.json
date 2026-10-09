@@ -1,0 +1,3284 @@
+{
+  "version": 1,
+  "about": "Close ingredient swaps for the recipe book: how much of one replaces the other, how alike they are, and what changes. A side with a unit (\"clove\", \"tsp\") is for swaps that change unit.",
+  "swaps": [
+    {
+      "a": {
+        "name": "chickpea",
+        "form": "dried or dry or soaked",
+        "label": "dried chickpeas"
+      },
+      "b": {
+        "name": "chickpea",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred chickpeas, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are softer and often salted, so season at the end."
+    },
+    {
+      "a": {
+        "name": "butter bean",
+        "form": "dried or dry or soaked",
+        "label": "dried butter beans"
+      },
+      "b": {
+        "name": "butter bean",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred butter beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are creamier and often salted."
+    },
+    {
+      "a": {
+        "name": "cannellini bean",
+        "form": "dried or dry or soaked",
+        "label": "dried cannellini beans"
+      },
+      "b": {
+        "name": "cannellini bean",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred cannellini beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are softer and often salted, so season at the end."
+    },
+    {
+      "a": {
+        "name": "haricot bean",
+        "form": "dried or dry or soaked",
+        "label": "dried haricot beans"
+      },
+      "b": {
+        "name": "haricot bean",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred haricot beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are softer and often salted, so season at the end."
+    },
+    {
+      "a": {
+        "name": "white beans",
+        "form": "dried or dry or soaked",
+        "label": "dried white beans"
+      },
+      "b": {
+        "name": "white beans",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred white beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are softer and often salted, so season at the end."
+    },
+    {
+      "a": {
+        "name": "black beans",
+        "form": "dried or dry or soaked",
+        "label": "dried black beans"
+      },
+      "b": {
+        "name": "black beans",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred black beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are softer and often salted, so season at the end."
+    },
+    {
+      "a": {
+        "name": "borlotti bean",
+        "form": "dried or dry or soaked",
+        "label": "dried borlotti beans"
+      },
+      "b": {
+        "name": "borlotti bean",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned or jarred borlotti beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained, roughly one 400g tin. Jarred are softer and often salted, so season at the end."
+    },
+    {
+      "a": {
+        "name": "red kidney beans",
+        "form": "dried or dry or soaked",
+        "label": "dried red kidney beans"
+      },
+      "b": {
+        "name": "red kidney beans",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned red kidney beans, drained"
+      },
+      "factor": 2.4,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives about 240g drained. Dried must be soaked, then boiled hard for 10 minutes before simmering."
+    },
+    {
+      "a": {
+        "name": "puy lentil",
+        "form": "dried or dry",
+        "label": "dried puy lentils"
+      },
+      "b": {
+        "name": "puy lentil",
+        "form": "tin or tinned or pouch or cooked or ready-cooked or jar",
+        "label": "ready-cooked puy lentils"
+      },
+      "factor": 2.5,
+      "similarity": 3,
+      "note": "Weight only. 100g dried gives roughly 250g cooked. Ready-cooked are softer; add them near the end just to heat through."
+    },
+    {
+      "a": {
+        "name": "cannellini bean",
+        "form": null,
+        "label": "cannellini beans"
+      },
+      "b": {
+        "name": "butter bean",
+        "form": null,
+        "label": "butter beans"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Use the same form, dried or tinned. Butter beans are bigger and creamier."
+    },
+    {
+      "a": {
+        "name": "cannellini bean",
+        "form": null,
+        "label": "cannellini beans"
+      },
+      "b": {
+        "name": "haricot bean",
+        "form": null,
+        "label": "haricot beans"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Use the same form. Haricot are smaller; both are mild white beans."
+    },
+    {
+      "a": {
+        "name": "borlotti bean",
+        "form": null,
+        "label": "borlotti beans"
+      },
+      "b": {
+        "name": "cannellini bean",
+        "form": null,
+        "label": "cannellini beans"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Use the same form. Borlotti are creamier and nuttier; cannellini are milder."
+    },
+    {
+      "a": {
+        "name": "black beans",
+        "form": null,
+        "label": "black beans"
+      },
+      "b": {
+        "name": "red kidney beans",
+        "form": null,
+        "label": "red kidney beans"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Use the same form. Kidney beans are firmer with thicker skins. Dried kidney beans need a 10-minute hard boil."
+    },
+    {
+      "a": {
+        "name": "chickpea",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked or pouch",
+        "label": "tinned chickpeas"
+      },
+      "b": {
+        "name": "cannellini bean",
+        "form": "tin or tinned or jar or jarred or can or canned or cooked",
+        "label": "tinned cannellini beans"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Drained weight for drained weight. Cannellini are softer and creamier, so they won't roast crisp. Fine in stews and dips."
+    },
+    {
+      "a": {
+        "name": "puy lentil",
+        "form": null,
+        "label": "puy lentils"
+      },
+      "b": {
+        "name": "green lentil",
+        "form": null,
+        "label": "green lentils"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Use the same form. Green lentils turn soft and lose their shape sooner, so cook them a little less."
+    },
+    {
+      "a": {
+        "name": "puy lentil",
+        "form": null,
+        "label": "puy lentils"
+      },
+      "b": {
+        "name": "black lentil",
+        "form": null,
+        "label": "black (beluga) lentils"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Use the same form. Both hold their shape and taste earthy."
+    },
+    {
+      "a": {
+        "name": "chickpea flour",
+        "form": null,
+        "label": "chickpea flour"
+      },
+      "b": {
+        "name": "gram flour",
+        "form": null,
+        "label": "gram flour"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Both are ground chickpeas. Gram flour is made from split brown chickpeas and is often finer; they behave the same."
+    },
+    {
+      "a": {
+        "name": "parsley",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh parsley"
+      },
+      "b": {
+        "name": "parsley",
+        "form": "dried",
+        "label": "dried parsley"
+      },
+      "factor": 0.33,
+      "similarity": 1,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried tastes of little; add it while cooking, never as a garnish."
+    },
+    {
+      "a": {
+        "name": "basil",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh basil"
+      },
+      "b": {
+        "name": "basil",
+        "form": "dried",
+        "label": "dried basil"
+      },
+      "factor": 0.33,
+      "similarity": 1,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried is flat and minty; add it early in sauces, never raw."
+    },
+    {
+      "a": {
+        "name": "dill",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh dill"
+      },
+      "b": {
+        "name": "dill",
+        "form": "dried",
+        "label": "dried dill"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried works in dressings left to stand; weak scattered on at the end."
+    },
+    {
+      "a": {
+        "name": "mint",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh mint"
+      },
+      "b": {
+        "name": "mint",
+        "form": "dried",
+        "label": "dried mint"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried suits yoghurt sauces and cooked dishes, not salads."
+    },
+    {
+      "a": {
+        "name": "thyme",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh thyme"
+      },
+      "b": {
+        "name": "thyme",
+        "form": "dried",
+        "label": "dried thyme"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried thyme keeps its flavour well; add it early so it softens."
+    },
+    {
+      "a": {
+        "name": "oregano",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh oregano"
+      },
+      "b": {
+        "name": "oregano",
+        "form": "dried",
+        "label": "dried oregano"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried oregano is often preferred in cooked tomato sauces."
+    },
+    {
+      "a": {
+        "name": "rosemary",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh rosemary"
+      },
+      "b": {
+        "name": "rosemary",
+        "form": "dried",
+        "label": "dried rosemary"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Crumble dried needles finely and add them early so they soften."
+    },
+    {
+      "a": {
+        "name": "sage",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh sage"
+      },
+      "b": {
+        "name": "sage",
+        "form": "dried",
+        "label": "dried sage"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried is mustier; fine in stuffings and stews, not for frying whole leaves."
+    },
+    {
+      "a": {
+        "name": "tarragon",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh tarragon"
+      },
+      "b": {
+        "name": "tarragon",
+        "form": "dried",
+        "label": "dried tarragon"
+      },
+      "factor": 0.33,
+      "similarity": 1,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried loses much of the aniseed; best in sauces."
+    },
+    {
+      "a": {
+        "name": "mixed herbs",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh mixed herbs"
+      },
+      "b": {
+        "name": "mixed herbs",
+        "form": "dried",
+        "label": "dried mixed herbs"
+      },
+      "factor": 0.33,
+      "similarity": 1,
+      "note": "Spoon only: 1 tbsp chopped fresh ≈ 1 tsp dried. Dried suit long cooking, not finishing a dish."
+    },
+    {
+      "a": {
+        "name": "bay leaf",
+        "form": "fresh",
+        "label": "fresh bay leaves"
+      },
+      "b": {
+        "name": "bay leaf",
+        "form": "dried",
+        "label": "dried bay leaves"
+      },
+      "factor": 2,
+      "similarity": 3,
+      "note": "Count for count, fresh leaves are stronger: 1 fresh does the work of 2 dried."
+    },
+    {
+      "a": {
+        "name": "curry leaf",
+        "form": "fresh",
+        "label": "fresh curry leaves"
+      },
+      "b": {
+        "name": "curry leaf",
+        "form": "dried or dry",
+        "label": "dried curry leaves"
+      },
+      "factor": 2,
+      "similarity": 1,
+      "note": "Dried leaves lose much of their aroma, so use about twice as many. Frozen fresh leaves keep far better."
+    },
+    {
+      "a": {
+        "name": "chives",
+        "form": null,
+        "label": "chives"
+      },
+      "b": {
+        "name": "spring onion",
+        "form": null,
+        "label": "spring onion, green tops only"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon, finely sliced, not count for count. Spring onion tops are a little stronger and crunchier."
+    },
+    {
+      "a": {
+        "name": "coriander",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh coriander"
+      },
+      "b": {
+        "name": "flat-leaf parsley",
+        "form": null,
+        "label": "fresh flat-leaf parsley"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Gives the green colour and freshness, not the citrus taste. Useful for anyone who dislikes coriander."
+    },
+    {
+      "a": {
+        "name": "flat-leaf parsley",
+        "form": null,
+        "label": "flat-leaf parsley"
+      },
+      "b": {
+        "name": "curly parsley",
+        "form": null,
+        "label": "curly parsley"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Curly parsley is a little more bitter and chewier; chop it finely."
+    },
+    {
+      "a": {
+        "name": "thai basil",
+        "form": null,
+        "label": "Thai basil"
+      },
+      "b": {
+        "name": "basil",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "Italian basil"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Thai basil tastes of aniseed and stands up to heat. Italian basil is sweeter; add it at the very end."
+    },
+    {
+      "a": {
+        "name": "dill",
+        "form": "fresh or sprig or sprigs or bunch or handful or leaves or chopped or picked",
+        "label": "fresh dill"
+      },
+      "b": {
+        "name": "fennel",
+        "form": "fronds or tops",
+        "label": "fennel fronds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount, chopped. Fennel fronds are milder with more aniseed."
+    },
+    {
+      "a": {
+        "name": "marjoram",
+        "form": null,
+        "label": "marjoram"
+      },
+      "b": {
+        "name": "oregano",
+        "form": null,
+        "label": "oregano"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Use the same form, fresh or dried. Marjoram is milder and sweeter than oregano."
+    },
+    {
+      "a": {
+        "name": "cumin seed",
+        "form": null,
+        "label": "cumin seeds"
+      },
+      "b": {
+        "name": "ground cumin",
+        "form": null,
+        "label": "ground cumin"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "By weight or spoon for spoon. Toasted seeds give pops of flavour; ground blends in but burns fast, so add it later."
+    },
+    {
+      "a": {
+        "name": "coriander seed",
+        "form": null,
+        "label": "coriander seeds"
+      },
+      "b": {
+        "name": "ground coriander",
+        "form": null,
+        "label": "ground coriander"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "By weight; spoon for spoon is close enough. Freshly ground toasted seeds taste brighter than shop-bought ground."
+    },
+    {
+      "a": {
+        "name": "fennel seed",
+        "form": null,
+        "label": "fennel seeds"
+      },
+      "b": {
+        "name": "ground fennel",
+        "form": null,
+        "label": "ground fennel"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "By weight or spoon for spoon. Whole seeds give bursts of aniseed; ground spreads evenly through the dish."
+    },
+    {
+      "a": {
+        "name": "black peppercorn",
+        "form": null,
+        "label": "black peppercorns"
+      },
+      "b": {
+        "name": "black pepper",
+        "form": null,
+        "label": "ground black pepper"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "By weight. Whole peppercorns suit stocks and brines; ground pepper clouds a stock and tastes stronger there."
+    },
+    {
+      "a": {
+        "name": "nutmeg",
+        "form": "whole or grated or freshly",
+        "label": "freshly grated nutmeg"
+      },
+      "b": {
+        "name": "nutmeg",
+        "form": "ground",
+        "label": "ground nutmeg"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Freshly grated is brighter; ready-ground fades with age."
+    },
+    {
+      "a": {
+        "name": "black mustard seed",
+        "form": null,
+        "label": "black mustard seeds"
+      },
+      "b": {
+        "name": "brown mustard seed",
+        "form": null,
+        "label": "brown mustard seeds"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Spoon for spoon. Brown seeds are very slightly milder; both pop in hot oil."
+    },
+    {
+      "a": {
+        "name": "black mustard seed",
+        "form": null,
+        "label": "black mustard seeds"
+      },
+      "b": {
+        "name": "yellow mustard seed",
+        "form": null,
+        "label": "yellow mustard seeds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Yellow seeds are noticeably milder and don't pop as much."
+    },
+    {
+      "a": {
+        "name": "smoked paprika",
+        "form": null,
+        "label": "smoked paprika"
+      },
+      "b": {
+        "name": "sweet paprika",
+        "form": null,
+        "label": "sweet (unsmoked) paprika"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Spoon for spoon. You lose the smoky flavour, which often defines the dish."
+    },
+    {
+      "a": {
+        "name": "garam masala",
+        "form": null,
+        "label": "garam masala"
+      },
+      "b": {
+        "name": "curry powder",
+        "form": null,
+        "label": "curry powder"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Spoon for spoon. Curry powder has turmeric, chilli and fenugreek; garam masala is warmer and sweeter."
+    },
+    {
+      "a": {
+        "name": "black pepper",
+        "form": null,
+        "label": "black pepper"
+      },
+      "b": {
+        "name": "white pepper",
+        "form": null,
+        "label": "white pepper"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. White pepper is earthier and sharper, and doesn't speckle pale sauces."
+    },
+    {
+      "a": {
+        "name": "ginger",
+        "form": "fresh or grated or piece or thumb or cm or root or knob or peeled",
+        "label": "fresh ginger, grated"
+      },
+      "b": {
+        "name": "ground ginger",
+        "form": null,
+        "label": "ground ginger"
+      },
+      "factor": 0.083,
+      "similarity": 1,
+      "note": "Spoon only: 1 tbsp grated fresh ≈ ¼ tsp ground. A thumb-sized piece gives about 1 tbsp. Ground is warmer, less zingy."
+    },
+    {
+      "a": {
+        "name": "ginger",
+        "form": "fresh or grated or piece or thumb or cm or root or knob or peeled",
+        "label": "fresh ginger, grated"
+      },
+      "b": {
+        "name": "ginger",
+        "form": "paste or jar or jarred or puree or purée",
+        "label": "ginger paste"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon, grated fresh to paste. Jarred paste often contains salt and acid, so it tastes flatter."
+    },
+    {
+      "a": {
+        "name": "turmeric",
+        "form": "fresh or grated or piece or thumb or cm or root or knob or peeled",
+        "label": "fresh turmeric, grated"
+      },
+      "b": {
+        "name": "ground turmeric",
+        "form": null,
+        "label": "ground turmeric"
+      },
+      "factor": 0.33,
+      "similarity": 2,
+      "note": "Spoon only: 1 tbsp grated fresh ≈ 1 tsp ground. Fresh is brighter and more peppery. Both stain."
+    },
+    {
+      "a": {
+        "name": "garlic",
+        "form": "clove or cloves or fresh",
+        "label": "fresh garlic cloves",
+        "unit": "clove"
+      },
+      "b": {
+        "name": "garlic granules",
+        "form": null,
+        "label": "garlic granules",
+        "unit": "tsp"
+      },
+      "factor": 0.25,
+      "similarity": 1,
+      "note": "Changes unit: per clove, use about ¼ tsp granules. Add with liquid so they don't burn. Flatter, sweeter taste."
+    },
+    {
+      "a": {
+        "name": "garlic",
+        "form": "clove or cloves or fresh",
+        "label": "fresh garlic cloves",
+        "unit": "clove"
+      },
+      "b": {
+        "name": "garlic",
+        "form": "powder",
+        "label": "garlic powder",
+        "unit": "tsp"
+      },
+      "factor": 0.125,
+      "similarity": 1,
+      "note": "Changes unit: per clove, use about ⅛ tsp powder. Add with liquid so it doesn't burn or clump."
+    },
+    {
+      "a": {
+        "name": "red chilli",
+        "form": null,
+        "label": "fresh red chilli",
+        "unit": "chilli"
+      },
+      "b": {
+        "name": "chilli flakes",
+        "form": null,
+        "label": "dried chilli flakes",
+        "unit": "tsp"
+      },
+      "factor": 0.5,
+      "similarity": 2,
+      "note": "Changes unit: per chilli, about ½ tsp flakes. Chillies vary a lot in heat, so add half, taste, then the rest."
+    },
+    {
+      "a": {
+        "name": "chilli flakes",
+        "form": null,
+        "label": "chilli flakes"
+      },
+      "b": {
+        "name": "cayenne pepper",
+        "form": null,
+        "label": "cayenne pepper"
+      },
+      "factor": 0.5,
+      "similarity": 2,
+      "note": "Spoon only: cayenne is fine and packs densely, so use about half. It blends in with no flecks."
+    },
+    {
+      "a": {
+        "name": "cayenne pepper",
+        "form": null,
+        "label": "cayenne pepper"
+      },
+      "b": {
+        "name": "chilli powder",
+        "form": null,
+        "label": "hot chilli powder"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon with hot chilli powder. Some blends contain cumin or garlic; mild ones need more."
+    },
+    {
+      "a": {
+        "name": "red chilli",
+        "form": null,
+        "label": "red chilli"
+      },
+      "b": {
+        "name": "green chilli",
+        "form": null,
+        "label": "green chilli"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Count for count. Green chillies taste grassier, red fruitier; heat depends on the variety, so taste."
+    },
+    {
+      "a": {
+        "name": "green chilli",
+        "form": null,
+        "label": "green chilli"
+      },
+      "b": {
+        "name": "jalapeño",
+        "form": null,
+        "label": "jalapeño"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Count for count. Jalapeños are fatter and usually milder than thin green chillies; taste and adjust."
+    },
+    {
+      "a": {
+        "name": "scotch bonnet chilli",
+        "form": null,
+        "label": "Scotch bonnet chilli"
+      },
+      "b": {
+        "name": "habanero chilli",
+        "form": null,
+        "label": "habanero chilli"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Count for count. Similar fierce heat and fruity flavour. Wear gloves."
+    },
+    {
+      "a": {
+        "name": "chipotle flakes",
+        "form": null,
+        "label": "chipotle flakes"
+      },
+      "b": {
+        "name": "chilli flakes",
+        "form": null,
+        "label": "chilli flakes, plus a pinch of smoked paprika"
+      },
+      "factor": 0.5,
+      "similarity": 1,
+      "note": "Plain flakes are usually hotter and lack smoke, so use half as much and add a pinch of smoked paprika."
+    },
+    {
+      "a": {
+        "name": "rose harissa",
+        "form": null,
+        "label": "rose harissa"
+      },
+      "b": {
+        "name": "harissa",
+        "form": null,
+        "label": "harissa paste"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Rose harissa has a floral note. Jars vary a lot in heat, so taste first."
+    },
+    {
+      "a": {
+        "name": "sriracha",
+        "form": null,
+        "label": "sriracha"
+      },
+      "b": {
+        "name": "hot sauce",
+        "form": null,
+        "label": "hot sauce"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Sriracha is thicker, sweeter and garlicky; vinegar-based hot sauces are thinner and sharper."
+    },
+    {
+      "a": {
+        "name": "tomato",
+        "form": "fresh or ripe",
+        "label": "fresh ripe tomatoes"
+      },
+      "b": {
+        "name": "tomato",
+        "form": "tin or tinned or canned",
+        "label": "tinned tomatoes"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight only, cooked dishes only: a 400g tin for about 400g ripe tomatoes. Fresh need longer cooking down."
+    },
+    {
+      "a": {
+        "name": "plum tomato",
+        "form": "tin or tinned or canned",
+        "label": "tinned plum tomatoes"
+      },
+      "b": {
+        "name": "chopped tomatoes",
+        "form": null,
+        "label": "tinned chopped tomatoes"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Tin for tin. Crush whole plum tomatoes by hand; they're often sweeter and less watery."
+    },
+    {
+      "a": {
+        "name": "cherry tomato",
+        "form": "tin or tinned or canned",
+        "label": "tinned cherry tomatoes"
+      },
+      "b": {
+        "name": "chopped tomatoes",
+        "form": null,
+        "label": "tinned chopped tomatoes"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Tin for tin. Tinned cherry tomatoes are sweeter and hold their shape."
+    },
+    {
+      "a": {
+        "name": "chopped tomatoes",
+        "form": null,
+        "label": "tinned chopped tomatoes"
+      },
+      "b": {
+        "name": "passata",
+        "form": null,
+        "label": "passata"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight or volume. Passata is smooth and sieved, so the sauce has no chunks."
+    },
+    {
+      "a": {
+        "name": "passata",
+        "form": null,
+        "label": "passata"
+      },
+      "b": {
+        "name": "tomato purée",
+        "form": null,
+        "label": "tomato purée, plus water"
+      },
+      "factor": 0.25,
+      "similarity": 2,
+      "note": "1 part purée plus 3 parts water ≈ 4 parts passata. Purée tastes more cooked; reduce passata down to replace purée."
+    },
+    {
+      "a": {
+        "name": "tomato purée",
+        "form": null,
+        "label": "tomato purée"
+      },
+      "b": {
+        "name": "tomato paste",
+        "form": null,
+        "label": "tomato paste"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "The same product: UK tomato purée is what other countries call tomato paste."
+    },
+    {
+      "a": {
+        "name": "tomato purée",
+        "form": null,
+        "label": "tomato purée"
+      },
+      "b": {
+        "name": "sun-dried tomato paste",
+        "form": null,
+        "label": "sun-dried tomato paste"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Spoon for spoon. Sun-dried paste is sweeter, oilier and more intense."
+    },
+    {
+      "a": {
+        "name": "tomato",
+        "form": "fresh or ripe",
+        "label": "fresh tomatoes"
+      },
+      "b": {
+        "name": "cherry tomato",
+        "form": null,
+        "label": "cherry tomatoes"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight. Cherry tomatoes are sweeter and juicier; halve them rather than chop."
+    },
+    {
+      "a": {
+        "name": "double cream",
+        "form": null,
+        "label": "double cream"
+      },
+      "b": {
+        "name": "crème fraîche",
+        "form": null,
+        "label": "full-fat crème fraîche"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Full-fat crème fraîche can boil without splitting and adds tang. It won't whip stiff like double cream."
+    },
+    {
+      "a": {
+        "name": "double cream",
+        "form": null,
+        "label": "double cream"
+      },
+      "b": {
+        "name": "single cream",
+        "form": null,
+        "label": "single cream"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Single cream is thinner, splits if boiled and won't whip. Fine stirred into sauces off the heat."
+    },
+    {
+      "a": {
+        "name": "double cream",
+        "form": null,
+        "label": "double cream"
+      },
+      "b": {
+        "name": "whipping cream",
+        "form": null,
+        "label": "whipping cream"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Whipping cream is lighter. It whips well but makes thinner, less rich sauces."
+    },
+    {
+      "a": {
+        "name": "crème fraîche",
+        "form": null,
+        "label": "crème fraîche"
+      },
+      "b": {
+        "name": "sour cream",
+        "form": null,
+        "label": "soured cream"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Soured cream is tangier and thinner, and splits if boiled. Stir it in off the heat."
+    },
+    {
+      "a": {
+        "name": "crème fraîche",
+        "form": null,
+        "label": "crème fraîche"
+      },
+      "b": {
+        "name": "greek yoghurt",
+        "form": null,
+        "label": "Greek yoghurt"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Yoghurt is tangier and splits if boiled. Stir it in off the heat, or mix in a little cornflour first."
+    },
+    {
+      "a": {
+        "name": "sour cream",
+        "form": null,
+        "label": "soured cream"
+      },
+      "b": {
+        "name": "greek yoghurt",
+        "form": null,
+        "label": "Greek yoghurt"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Greek yoghurt is thicker and slightly sharper. Both split if boiled."
+    },
+    {
+      "a": {
+        "name": "greek yoghurt",
+        "form": null,
+        "label": "Greek yoghurt"
+      },
+      "b": {
+        "name": "yoghurt",
+        "form": null,
+        "label": "natural yoghurt"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Natural yoghurt is thinner and sharper. Strain it in a sieve lined with kitchen paper to thicken."
+    },
+    {
+      "a": {
+        "name": "greek yoghurt",
+        "form": null,
+        "label": "Greek yoghurt"
+      },
+      "b": {
+        "name": "labneh",
+        "form": null,
+        "label": "labneh"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Labneh is thicker and saltier. Loosen it with a little water or milk if needed."
+    },
+    {
+      "a": {
+        "name": "greek yoghurt",
+        "form": null,
+        "label": "Greek yoghurt"
+      },
+      "b": {
+        "name": "coconut yoghurt",
+        "form": null,
+        "label": "coconut yoghurt"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Coconut yoghurt is dairy-free, sweeter, tastes of coconut and is often thinner."
+    },
+    {
+      "a": {
+        "name": "double cream",
+        "form": null,
+        "label": "double cream"
+      },
+      "b": {
+        "name": "coconut cream",
+        "form": null,
+        "label": "coconut cream"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Coconut cream is dairy-free but tastes of coconut, so it suits curries and soups more than delicate sauces."
+    },
+    {
+      "a": {
+        "name": "coconut milk",
+        "form": null,
+        "label": "coconut milk"
+      },
+      "b": {
+        "name": "coconut cream",
+        "form": null,
+        "label": "coconut cream"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Coconut cream is richer and thicker. Thin it with a splash of water for a lighter sauce."
+    },
+    {
+      "a": {
+        "name": "coconut milk",
+        "form": null,
+        "label": "full-fat coconut milk"
+      },
+      "b": {
+        "name": "light coconut milk",
+        "form": null,
+        "label": "light coconut milk"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Light coconut milk is thinner and less rich. Simmer a little longer to thicken."
+    },
+    {
+      "a": {
+        "name": "ricotta",
+        "form": null,
+        "label": "ricotta"
+      },
+      "b": {
+        "name": "cottage cheese",
+        "form": null,
+        "label": "cottage cheese"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Drain cottage cheese, then blitz or sieve it smooth. It's saltier and wetter."
+    },
+    {
+      "a": {
+        "name": "mascarpone",
+        "form": null,
+        "label": "mascarpone"
+      },
+      "b": {
+        "name": "cream cheese",
+        "form": null,
+        "label": "full-fat cream cheese"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Cream cheese is tangier and less rich. Fine in icings and baked dishes."
+    },
+    {
+      "a": {
+        "name": "parmesan",
+        "form": null,
+        "label": "parmesan"
+      },
+      "b": {
+        "name": "pecorino",
+        "form": null,
+        "label": "pecorino"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Pecorino is saltier and sharper, so season less. Grate it finely."
+    },
+    {
+      "a": {
+        "name": "parmesan",
+        "form": null,
+        "label": "parmesan"
+      },
+      "b": {
+        "name": "grana padano",
+        "form": null,
+        "label": "grana padano"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Grana padano is milder and slightly softer. Use the same weight."
+    },
+    {
+      "a": {
+        "name": "parmesan",
+        "form": null,
+        "label": "parmesan"
+      },
+      "b": {
+        "name": "vegetarian hard cheese",
+        "form": null,
+        "label": "vegetarian Italian-style hard cheese"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Parmesan is made with animal rennet, so isn't vegetarian. The Italian-style hard cheese is slightly milder."
+    },
+    {
+      "a": {
+        "name": "pecorino",
+        "form": null,
+        "label": "pecorino"
+      },
+      "b": {
+        "name": "manchego",
+        "form": null,
+        "label": "manchego"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Manchego is milder and less salty. Grate finely and add a pinch of salt if needed."
+    },
+    {
+      "a": {
+        "name": "feta",
+        "form": null,
+        "label": "feta"
+      },
+      "b": {
+        "name": "goat's cheese",
+        "form": null,
+        "label": "crumbly goat's cheese"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Crumbly goat's cheese is closest. Soft goat's cheese is creamier and less salty."
+    },
+    {
+      "a": {
+        "name": "halloumi",
+        "form": null,
+        "label": "halloumi"
+      },
+      "b": {
+        "name": "paneer",
+        "form": null,
+        "label": "paneer"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Both fry without melting. Paneer is milder and unsalted, so season it well."
+    },
+    {
+      "a": {
+        "name": "paneer",
+        "form": null,
+        "label": "paneer"
+      },
+      "b": {
+        "name": "firm tofu",
+        "form": null,
+        "label": "firm tofu, pressed"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Tofu is dairy-free. Press it first. It's softer and blander, so season or marinate it well."
+    },
+    {
+      "a": {
+        "name": "mozzarella",
+        "form": null,
+        "label": "mozzarella"
+      },
+      "b": {
+        "name": "burrata",
+        "form": null,
+        "label": "burrata"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Burrata is creamier and wetter. Tear it over at the end; don't bake it."
+    },
+    {
+      "a": {
+        "name": "cheddar",
+        "form": null,
+        "label": "cheddar"
+      },
+      "b": {
+        "name": "gruyère",
+        "form": null,
+        "label": "gruyère"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Both melt well. Gruyère is nuttier and sweeter; cheddar is sharper."
+    },
+    {
+      "a": {
+        "name": "gruyère",
+        "form": null,
+        "label": "gruyère"
+      },
+      "b": {
+        "name": "comté",
+        "form": null,
+        "label": "comté"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Very similar Alpine cheeses. Use the same weight."
+    },
+    {
+      "a": {
+        "name": "gruyère",
+        "form": null,
+        "label": "gruyère"
+      },
+      "b": {
+        "name": "emmental",
+        "form": null,
+        "label": "emmental"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Emmental is milder and melts more stringily."
+    },
+    {
+      "a": {
+        "name": "milk",
+        "form": null,
+        "label": "milk"
+      },
+      "b": {
+        "name": "oat milk",
+        "form": null,
+        "label": "unsweetened oat milk"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Fine in sauces and baking; slightly sweet and thinner."
+    },
+    {
+      "a": {
+        "name": "milk",
+        "form": null,
+        "label": "milk"
+      },
+      "b": {
+        "name": "soya milk",
+        "form": null,
+        "label": "unsweetened soya milk"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Holds up well in sauces; can curdle in very acidic dishes."
+    },
+    {
+      "a": {
+        "name": "butter",
+        "form": null,
+        "label": "butter"
+      },
+      "b": {
+        "name": "ghee",
+        "form": null,
+        "label": "ghee"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "For frying and curries. Ghee has no water or milk solids, so it gets hotter without burning."
+    },
+    {
+      "a": {
+        "name": "butter",
+        "form": null,
+        "label": "butter"
+      },
+      "b": {
+        "name": "olive oil",
+        "form": null,
+        "label": "olive oil"
+      },
+      "factor": 0.8,
+      "similarity": 1,
+      "note": "For frying, roasting and mash, not pastry or creaming. Butter is about 80% fat, so use four-fifths as much oil."
+    },
+    {
+      "a": {
+        "name": "butter",
+        "form": null,
+        "label": "butter"
+      },
+      "b": {
+        "name": "plant-based butter",
+        "form": null,
+        "label": "plant-based block butter"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Use a block, not a spread, for baking. Choose unsalted if you can."
+    },
+    {
+      "a": {
+        "name": "butter",
+        "form": null,
+        "label": "butter"
+      },
+      "b": {
+        "name": "coconut oil",
+        "form": null,
+        "label": "coconut oil"
+      },
+      "factor": 0.8,
+      "similarity": 1,
+      "note": "Coconut oil is dairy-free. Butter is about 80% fat, so use four-fifths as much coconut oil. Use it solid for pastry and crumble."
+    },
+    {
+      "a": {
+        "name": "olive oil",
+        "form": null,
+        "label": "olive oil"
+      },
+      "b": {
+        "name": "rapeseed oil",
+        "form": null,
+        "label": "rapeseed oil"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Cold-pressed rapeseed is buttery and nutty; olive oil is fruitier."
+    },
+    {
+      "a": {
+        "name": "extra virgin olive oil",
+        "form": null,
+        "label": "extra virgin olive oil"
+      },
+      "b": {
+        "name": "olive oil",
+        "form": null,
+        "label": "plain olive oil"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Plain olive oil is milder. Fine for cooking; extra virgin is better for dressings and drizzling."
+    },
+    {
+      "a": {
+        "name": "rapeseed oil",
+        "form": null,
+        "label": "rapeseed oil"
+      },
+      "b": {
+        "name": "sunflower oil",
+        "form": null,
+        "label": "sunflower oil"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Sunflower is neutral; cold-pressed rapeseed tastes nutty."
+    },
+    {
+      "a": {
+        "name": "vegetable oil",
+        "form": null,
+        "label": "vegetable oil"
+      },
+      "b": {
+        "name": "sunflower oil",
+        "form": null,
+        "label": "sunflower oil"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Both neutral. Same amount for frying, roasting and baking."
+    },
+    {
+      "a": {
+        "name": "vegetable oil",
+        "form": null,
+        "label": "vegetable oil"
+      },
+      "b": {
+        "name": "rapeseed oil",
+        "form": null,
+        "label": "rapeseed oil"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "UK vegetable oil is usually rapeseed oil. Same amount."
+    },
+    {
+      "a": {
+        "name": "groundnut oil",
+        "form": null,
+        "label": "groundnut oil"
+      },
+      "b": {
+        "name": "vegetable oil",
+        "form": null,
+        "label": "vegetable oil"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Both neutral and good for high heat. Same amount for stir-frying."
+    },
+    {
+      "a": {
+        "name": "neutral oil",
+        "form": null,
+        "label": "neutral oil"
+      },
+      "b": {
+        "name": "sunflower oil",
+        "form": null,
+        "label": "sunflower oil"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Sunflower oil is a neutral oil. Same amount."
+    },
+    {
+      "a": {
+        "name": "coconut oil",
+        "form": null,
+        "label": "coconut oil"
+      },
+      "b": {
+        "name": "vegetable oil",
+        "form": null,
+        "label": "vegetable oil"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Coconut oil is solid when cool and may taste of coconut unless refined."
+    },
+    {
+      "a": {
+        "name": "lemon juice",
+        "form": null,
+        "label": "lemon juice"
+      },
+      "b": {
+        "name": "lime juice",
+        "form": null,
+        "label": "lime juice"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Lime is more fragrant and slightly more bitter; lemon is rounder."
+    },
+    {
+      "a": {
+        "name": "lemon",
+        "form": null,
+        "label": "lemon"
+      },
+      "b": {
+        "name": "lime",
+        "form": null,
+        "label": "lime"
+      },
+      "factor": 1.5,
+      "similarity": 2,
+      "note": "Count: a lemon gives about 3 tbsp juice, a lime about 2. Lime zest is more fragrant."
+    },
+    {
+      "a": {
+        "name": "lemon juice",
+        "form": null,
+        "label": "lemon juice"
+      },
+      "b": {
+        "name": "white wine vinegar",
+        "form": null,
+        "label": "white wine vinegar"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Spoon for spoon in dressings and marinades. Vinegar has no fruitiness; add a pinch of sugar if harsh."
+    },
+    {
+      "a": {
+        "name": "red wine vinegar",
+        "form": null,
+        "label": "red wine vinegar"
+      },
+      "b": {
+        "name": "white wine vinegar",
+        "form": null,
+        "label": "white wine vinegar"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. White is a little lighter and won't colour the dish."
+    },
+    {
+      "a": {
+        "name": "white wine vinegar",
+        "form": null,
+        "label": "white wine vinegar"
+      },
+      "b": {
+        "name": "cider vinegar",
+        "form": null,
+        "label": "cider vinegar"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Cider vinegar is fruitier and slightly milder."
+    },
+    {
+      "a": {
+        "name": "red wine vinegar",
+        "form": null,
+        "label": "red wine vinegar"
+      },
+      "b": {
+        "name": "sherry vinegar",
+        "form": null,
+        "label": "sherry vinegar"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Sherry vinegar is rounder and nuttier."
+    },
+    {
+      "a": {
+        "name": "rice vinegar",
+        "form": null,
+        "label": "rice vinegar"
+      },
+      "b": {
+        "name": "rice wine vinegar",
+        "form": null,
+        "label": "rice wine vinegar"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "The same thing under two names."
+    },
+    {
+      "a": {
+        "name": "rice vinegar",
+        "form": null,
+        "label": "rice vinegar"
+      },
+      "b": {
+        "name": "white wine vinegar",
+        "form": null,
+        "label": "white wine vinegar, plus a pinch of sugar"
+      },
+      "factor": 0.75,
+      "similarity": 2,
+      "note": "Wine vinegar is sharper: three parts replace four of rice vinegar. Add a pinch of sugar."
+    },
+    {
+      "a": {
+        "name": "balsamic vinegar",
+        "form": null,
+        "label": "balsamic vinegar"
+      },
+      "b": {
+        "name": "red wine vinegar",
+        "form": null,
+        "label": "red wine vinegar, plus a pinch of sugar"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Balsamic is sweet and syrupy; red wine vinegar is sharp. Sweeten it with a pinch of sugar."
+    },
+    {
+      "a": {
+        "name": "white wine",
+        "form": null,
+        "label": "dry white wine"
+      },
+      "b": {
+        "name": "dry vermouth",
+        "form": null,
+        "label": "dry vermouth"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Vermouth is more herbal and keeps for months once opened."
+    },
+    {
+      "a": {
+        "name": "honey",
+        "form": null,
+        "label": "honey"
+      },
+      "b": {
+        "name": "maple syrup",
+        "form": null,
+        "label": "maple syrup"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Maple is thinner and less sweet, with a caramel taste, and vegan."
+    },
+    {
+      "a": {
+        "name": "honey",
+        "form": null,
+        "label": "honey"
+      },
+      "b": {
+        "name": "agave syrup",
+        "form": null,
+        "label": "agave syrup"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Agave is thinner, neutral-tasting and vegan."
+    },
+    {
+      "a": {
+        "name": "honey",
+        "form": null,
+        "label": "honey"
+      },
+      "b": {
+        "name": "golden syrup",
+        "form": null,
+        "label": "golden syrup"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Golden syrup tastes of caramel rather than flowers."
+    },
+    {
+      "a": {
+        "name": "maple syrup",
+        "form": null,
+        "label": "maple syrup"
+      },
+      "b": {
+        "name": "agave syrup",
+        "form": null,
+        "label": "agave syrup"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon. Agave is a little sweeter, with no caramel taste."
+    },
+    {
+      "a": {
+        "name": "sugar",
+        "form": null,
+        "label": "sugar"
+      },
+      "b": {
+        "name": "maple syrup",
+        "form": null,
+        "label": "maple syrup"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Spoon for spoon in dressings and sauces. Not for baking, where the extra liquid changes the result."
+    },
+    {
+      "a": {
+        "name": "caster sugar",
+        "form": null,
+        "label": "caster sugar"
+      },
+      "b": {
+        "name": "sugar",
+        "form": null,
+        "label": "granulated sugar"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Granulated is coarser; for meringues and sponges, blitz it fine first."
+    },
+    {
+      "a": {
+        "name": "caster sugar",
+        "form": null,
+        "label": "caster sugar"
+      },
+      "b": {
+        "name": "golden caster sugar",
+        "form": null,
+        "label": "golden caster sugar"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Golden caster has a faint caramel note and slightly darker colour."
+    },
+    {
+      "a": {
+        "name": "brown sugar",
+        "form": null,
+        "label": "soft light brown sugar"
+      },
+      "b": {
+        "name": "light muscovado sugar",
+        "form": null,
+        "label": "light muscovado sugar"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Muscovado is moister with a deeper toffee taste."
+    },
+    {
+      "a": {
+        "name": "vanilla bean paste",
+        "form": null,
+        "label": "vanilla bean paste"
+      },
+      "b": {
+        "name": "vanilla extract",
+        "form": null,
+        "label": "vanilla extract"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Spoon for spoon. Paste adds the black specks; extract is thinner."
+    },
+    {
+      "a": {
+        "name": "self-raising flour",
+        "form": null,
+        "label": "self-raising flour"
+      },
+      "b": {
+        "name": "plain flour",
+        "form": null,
+        "label": "plain flour plus baking powder"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Add 1 level tsp baking powder per 100g plain flour. Use self-raising for plain only in bakes with baking powder, leaving that out."
+    },
+    {
+      "a": {
+        "name": "cornflour",
+        "form": null,
+        "label": "cornflour (to thicken)"
+      },
+      "b": {
+        "name": "plain flour",
+        "form": null,
+        "label": "plain flour (to thicken)"
+      },
+      "factor": 2,
+      "similarity": 1,
+      "note": "Thickening only: plain flour has half the thickening power, so use twice as much and simmer a few minutes longer."
+    },
+    {
+      "a": {
+        "name": "plain flour",
+        "form": null,
+        "label": "plain flour"
+      },
+      "b": {
+        "name": "spelt flour",
+        "form": null,
+        "label": "white spelt flour"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Spelt dough is more fragile, so knead it less. Wholemeal spelt needs a little more liquid."
+    },
+    {
+      "a": {
+        "name": "plain flour",
+        "form": null,
+        "label": "plain flour"
+      },
+      "b": {
+        "name": "gluten-free plain flour",
+        "form": null,
+        "label": "gluten-free plain flour"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Fine for sauces and batters; bakes may be crumblier."
+    },
+    {
+      "a": {
+        "name": "cornflour",
+        "form": null,
+        "label": "cornflour (for coating)"
+      },
+      "b": {
+        "name": "rice flour",
+        "form": null,
+        "label": "rice flour"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "For crisp coatings and batters, same weight. Rice flour gives a lighter, crunchier crust."
+    },
+    {
+      "a": {
+        "name": "baking powder",
+        "form": null,
+        "label": "baking powder"
+      },
+      "b": {
+        "name": "bicarbonate of soda",
+        "form": null,
+        "label": "bicarbonate of soda"
+      },
+      "factor": 0.25,
+      "similarity": 1,
+      "note": "Bicarb is about four times stronger and needs an acid such as yoghurt or lemon juice. Too much tastes soapy."
+    },
+    {
+      "a": {
+        "name": "panko breadcrumb",
+        "form": null,
+        "label": "panko breadcrumbs"
+      },
+      "b": {
+        "name": "breadcrumbs",
+        "form": "dried or dry",
+        "label": "dried breadcrumbs"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Spoon for spoon, not by weight: panko is airier. It gives a lighter, crunchier crust."
+    },
+    {
+      "a": {
+        "name": "sourdough bread",
+        "form": null,
+        "label": "sourdough bread"
+      },
+      "b": {
+        "name": "crusty bread",
+        "form": null,
+        "label": "crusty white bread"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Any good crusty loaf works. Sourdough is chewier and tangier."
+    },
+    {
+      "a": {
+        "name": "flatbread",
+        "form": null,
+        "label": "flatbread"
+      },
+      "b": {
+        "name": "pitta bread",
+        "form": null,
+        "label": "pitta bread"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Pitta is thicker and has a pocket. Warm it before serving."
+    },
+    {
+      "a": {
+        "name": "naan",
+        "form": null,
+        "label": "naan"
+      },
+      "b": {
+        "name": "flatbread",
+        "form": null,
+        "label": "flatbread"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Naan is softer and richer. Warm either through before serving."
+    },
+    {
+      "a": {
+        "name": "corn tortilla",
+        "form": null,
+        "label": "corn tortillas"
+      },
+      "b": {
+        "name": "flour tortilla",
+        "form": null,
+        "label": "flour tortillas"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Flour tortillas are softer and bigger; corn ones are more fragile and taste of maize."
+    },
+    {
+      "a": {
+        "name": "vegetable stock",
+        "form": "cube or cubes",
+        "label": "vegetable stock cube",
+        "unit": "cube"
+      },
+      "b": {
+        "name": "vegetable stock",
+        "form": "powder or bouillon or granules",
+        "label": "vegetable stock powder",
+        "unit": "tsp"
+      },
+      "factor": 2,
+      "similarity": 3,
+      "note": "Changes unit: per cube, about 2 tsp powder. Most cubes and 2 tsp powder each make 500ml, but brands vary; check the pack."
+    },
+    {
+      "a": {
+        "name": "chicken stock",
+        "form": null,
+        "label": "chicken stock"
+      },
+      "b": {
+        "name": "vegetable stock",
+        "form": null,
+        "label": "vegetable stock"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same form and amount. Vegetable stock is lighter and keeps the dish vegetarian."
+    },
+    {
+      "a": {
+        "name": "onion",
+        "form": null,
+        "label": "onion"
+      },
+      "b": {
+        "name": "shallot",
+        "form": null,
+        "label": "shallots"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight only. A medium onion is about 150g, a banana shallot about 50g. Shallots are milder and sweeter."
+    },
+    {
+      "a": {
+        "name": "onion",
+        "form": null,
+        "label": "onion"
+      },
+      "b": {
+        "name": "red onion",
+        "form": null,
+        "label": "red onion"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Count for count. Red onions are milder and sweeter raw; cooked, they're close but tint the dish."
+    },
+    {
+      "a": {
+        "name": "onion",
+        "form": null,
+        "label": "onion"
+      },
+      "b": {
+        "name": "white onion",
+        "form": null,
+        "label": "white onion"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Count for count. White onions are a little sharper raw; cooked, much the same."
+    },
+    {
+      "a": {
+        "name": "onion",
+        "form": null,
+        "label": "onion"
+      },
+      "b": {
+        "name": "leek",
+        "form": null,
+        "label": "leek"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight only, trimmed: use the white and pale green. Leeks are milder and sweeter; wash out any grit."
+    },
+    {
+      "a": {
+        "name": "red onion",
+        "form": null,
+        "label": "red onion"
+      },
+      "b": {
+        "name": "shallot",
+        "form": null,
+        "label": "shallots"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight only. Good raw or pickled; shallots are milder and finer. A red onion is about 150g, a banana shallot 50g."
+    },
+    {
+      "a": {
+        "name": "crispy shallot",
+        "form": null,
+        "label": "crispy shallots"
+      },
+      "b": {
+        "name": "crispy onion",
+        "form": null,
+        "label": "crispy fried onions"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount as a topping. Shop-bought crispy onions are sweeter and saltier."
+    },
+    {
+      "a": {
+        "name": "spinach",
+        "form": "fresh or bag or leaves or baby",
+        "label": "fresh spinach"
+      },
+      "b": {
+        "name": "spinach",
+        "form": "frozen",
+        "label": "frozen spinach"
+      },
+      "factor": 0.6,
+      "similarity": 2,
+      "note": "Weight only: about 300g frozen for 500g fresh. Thaw and squeeze out the water. For cooking, not salads."
+    },
+    {
+      "a": {
+        "name": "spinach",
+        "form": null,
+        "label": "spinach"
+      },
+      "b": {
+        "name": "chard",
+        "form": null,
+        "label": "chard"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight. Chop and cook chard stalks a few minutes first; the leaves wilt like spinach."
+    },
+    {
+      "a": {
+        "name": "spinach",
+        "form": null,
+        "label": "spinach"
+      },
+      "b": {
+        "name": "kale",
+        "form": null,
+        "label": "kale"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Weight for weight, for cooking. Strip the tough stems; kale needs several minutes longer and stays chewy."
+    },
+    {
+      "a": {
+        "name": "chard",
+        "form": null,
+        "label": "chard"
+      },
+      "b": {
+        "name": "kale",
+        "form": null,
+        "label": "kale"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight. Strip kale stems and cook it a few minutes longer; chard is softer."
+    },
+    {
+      "a": {
+        "name": "kale",
+        "form": null,
+        "label": "kale"
+      },
+      "b": {
+        "name": "cavolo nero",
+        "form": null,
+        "label": "cavolo nero"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight. Cavolo nero is darker, sweeter and more tender. Strip the stems of both."
+    },
+    {
+      "a": {
+        "name": "chard",
+        "form": null,
+        "label": "chard"
+      },
+      "b": {
+        "name": "cavolo nero",
+        "form": null,
+        "label": "cavolo nero"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight. Strip the cavolo nero stems and cook it a little longer than chard leaves."
+    },
+    {
+      "a": {
+        "name": "kale",
+        "form": null,
+        "label": "kale"
+      },
+      "b": {
+        "name": "spring greens",
+        "form": null,
+        "label": "spring greens"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight, shredded. Spring greens are more tender, so cook them a little less."
+    },
+    {
+      "a": {
+        "name": "spring greens",
+        "form": null,
+        "label": "spring greens"
+      },
+      "b": {
+        "name": "savoy cabbage",
+        "form": null,
+        "label": "savoy cabbage"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight, shredded. Savoy is crinklier and slightly sweeter."
+    },
+    {
+      "a": {
+        "name": "white cabbage",
+        "form": null,
+        "label": "white cabbage"
+      },
+      "b": {
+        "name": "savoy cabbage",
+        "form": null,
+        "label": "savoy cabbage"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Savoy is more tender and cooks faster."
+    },
+    {
+      "a": {
+        "name": "red cabbage",
+        "form": null,
+        "label": "red cabbage"
+      },
+      "b": {
+        "name": "white cabbage",
+        "form": null,
+        "label": "white cabbage"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. White is milder and won't colour the dish; red needs a little acid to stay purple."
+    },
+    {
+      "a": {
+        "name": "rocket",
+        "form": null,
+        "label": "rocket"
+      },
+      "b": {
+        "name": "watercress",
+        "form": null,
+        "label": "watercress"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Both peppery; watercress is softer and wilts faster, so dress it just before serving."
+    },
+    {
+      "a": {
+        "name": "tenderstem broccoli",
+        "form": null,
+        "label": "Tenderstem broccoli"
+      },
+      "b": {
+        "name": "purple sprouting broccoli",
+        "form": null,
+        "label": "purple sprouting broccoli"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Trim woody ends; cook both briefly. Purple sprouting has a deeper flavour."
+    },
+    {
+      "a": {
+        "name": "tenderstem broccoli",
+        "form": null,
+        "label": "Tenderstem broccoli"
+      },
+      "b": {
+        "name": "broccoli",
+        "form": null,
+        "label": "broccoli, cut into long florets"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Cut a head into long florets and slice the stalk so they cook in a similar time."
+    },
+    {
+      "a": {
+        "name": "green bean",
+        "form": null,
+        "label": "green beans"
+      },
+      "b": {
+        "name": "runner bean",
+        "form": null,
+        "label": "runner beans"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. String runners and slice them thinly on the diagonal. They're coarser and take a little longer."
+    },
+    {
+      "a": {
+        "name": "butternut squash",
+        "form": null,
+        "label": "butternut squash"
+      },
+      "b": {
+        "name": "pumpkin",
+        "form": null,
+        "label": "pumpkin"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight, peeled. Dense pumpkins like crown prince are closest; watery carving pumpkins are poor."
+    },
+    {
+      "a": {
+        "name": "butternut squash",
+        "form": null,
+        "label": "butternut squash"
+      },
+      "b": {
+        "name": "sweet potato",
+        "form": null,
+        "label": "sweet potato"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Weight for weight, peeled. Sweet potato is sweeter and softer, and cooks a little faster."
+    },
+    {
+      "a": {
+        "name": "celery",
+        "form": null,
+        "label": "celery"
+      },
+      "b": {
+        "name": "fennel",
+        "form": "bulb or fresh or sliced or chopped",
+        "label": "fennel bulb"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Same weight, raw or cooked. Fennel adds an aniseed flavour."
+    },
+    {
+      "a": {
+        "name": "cauliflower",
+        "form": null,
+        "label": "cauliflower"
+      },
+      "b": {
+        "name": "romanesco",
+        "form": null,
+        "label": "romanesco"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight and cooking. Romanesco is firmer and nuttier."
+    },
+    {
+      "a": {
+        "name": "pea",
+        "form": "frozen",
+        "label": "frozen peas"
+      },
+      "b": {
+        "name": "pea",
+        "form": "fresh",
+        "label": "fresh peas, podded"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same podded weight. Frozen peas are often sweeter than shop-bought fresh ones."
+    },
+    {
+      "a": {
+        "name": "sweetcorn",
+        "form": "tin or tinned or canned",
+        "label": "tinned sweetcorn, drained"
+      },
+      "b": {
+        "name": "sweetcorn",
+        "form": "frozen",
+        "label": "frozen sweetcorn"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight, drained or thawed. Frozen is slightly firmer."
+    },
+    {
+      "a": {
+        "name": "little gem lettuce",
+        "form": null,
+        "label": "Little Gem lettuce"
+      },
+      "b": {
+        "name": "baby gem lettuce",
+        "form": null,
+        "label": "Baby Gem lettuce"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "The same lettuce under two names."
+    },
+    {
+      "a": {
+        "name": "radicchio",
+        "form": null,
+        "label": "radicchio"
+      },
+      "b": {
+        "name": "red chicory",
+        "form": null,
+        "label": "red chicory"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Both bitter. Chicory is milder and crunchier."
+    },
+    {
+      "a": {
+        "name": "red pepper",
+        "form": null,
+        "label": "red pepper"
+      },
+      "b": {
+        "name": "yellow pepper",
+        "form": null,
+        "label": "yellow or orange pepper"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Count for count. Yellow and orange are as sweet as red; only the colour changes."
+    },
+    {
+      "a": {
+        "name": "red pepper",
+        "form": null,
+        "label": "red pepper"
+      },
+      "b": {
+        "name": "green pepper",
+        "form": null,
+        "label": "green pepper"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Count for count. Green peppers are unripe, so more bitter and less sweet."
+    },
+    {
+      "a": {
+        "name": "waxy potato",
+        "form": null,
+        "label": "waxy potatoes"
+      },
+      "b": {
+        "name": "new potato",
+        "form": null,
+        "label": "new potatoes"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Both hold their shape when boiled; new potatoes are smaller with thinner skins."
+    },
+    {
+      "a": {
+        "name": "floury potato",
+        "form": null,
+        "label": "floury potatoes"
+      },
+      "b": {
+        "name": "baking potato",
+        "form": null,
+        "label": "baking potatoes"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Baking potatoes are floury varieties, good for mash and roasties."
+    },
+    {
+      "a": {
+        "name": "porcini",
+        "form": "dried",
+        "label": "dried porcini"
+      },
+      "b": {
+        "name": "chestnut mushroom",
+        "form": null,
+        "label": "fresh chestnut mushrooms"
+      },
+      "factor": 8,
+      "similarity": 1,
+      "note": "Weight only: 10g dried for about 80g fresh. Dried porcini are far more intense; keep their soaking liquid."
+    },
+    {
+      "a": {
+        "name": "porcini",
+        "form": "dried",
+        "label": "dried porcini"
+      },
+      "b": {
+        "name": "shiitake mushroom",
+        "form": "dried",
+        "label": "dried shiitake"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same dried weight, soaked. Shiitake are smokier and less earthy. Keep the soaking liquid."
+    },
+    {
+      "a": {
+        "name": "chestnut mushroom",
+        "form": null,
+        "label": "chestnut mushrooms"
+      },
+      "b": {
+        "name": "button mushroom",
+        "form": null,
+        "label": "button mushrooms"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Button mushrooms are milder and wetter; fry them hard to drive off the water."
+    },
+    {
+      "a": {
+        "name": "chestnut mushroom",
+        "form": null,
+        "label": "chestnut mushrooms"
+      },
+      "b": {
+        "name": "portobello mushroom",
+        "form": null,
+        "label": "portobello mushrooms"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Portobellos are grown-up chestnut mushrooms; cut them to the same size."
+    },
+    {
+      "a": {
+        "name": "chestnut mushroom",
+        "form": null,
+        "label": "chestnut mushrooms"
+      },
+      "b": {
+        "name": "oyster mushroom",
+        "form": null,
+        "label": "oyster mushrooms"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Oyster mushrooms are softer and cook faster; tear rather than slice."
+    },
+    {
+      "a": {
+        "name": "oyster mushroom",
+        "form": null,
+        "label": "oyster mushrooms"
+      },
+      "b": {
+        "name": "shiitake mushroom",
+        "form": "fresh",
+        "label": "fresh shiitake mushrooms"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Shiitake are meatier and stronger; remove the tough stalks."
+    },
+    {
+      "a": {
+        "name": "portobello mushroom",
+        "form": null,
+        "label": "portobello mushrooms"
+      },
+      "b": {
+        "name": "field mushroom",
+        "form": null,
+        "label": "flat field mushrooms"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same count or weight. Both are large flat mushrooms for grilling or stuffing."
+    },
+    {
+      "a": {
+        "name": "pine nut",
+        "form": null,
+        "label": "pine nuts"
+      },
+      "b": {
+        "name": "cashew",
+        "form": null,
+        "label": "cashews"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight, toasted. Cashews are creamier and sweeter; good in pesto."
+    },
+    {
+      "a": {
+        "name": "pine nut",
+        "form": null,
+        "label": "pine nuts"
+      },
+      "b": {
+        "name": "walnut",
+        "form": null,
+        "label": "walnuts"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight, toasted. Walnuts are more bitter; good in pesto."
+    },
+    {
+      "a": {
+        "name": "pine nut",
+        "form": null,
+        "label": "pine nuts"
+      },
+      "b": {
+        "name": "sunflower seed",
+        "form": null,
+        "label": "sunflower seeds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Sunflower seeds are nut-free. Same weight, toasted. They taste slightly earthier."
+    },
+    {
+      "a": {
+        "name": "walnut",
+        "form": null,
+        "label": "walnuts"
+      },
+      "b": {
+        "name": "pecan",
+        "form": null,
+        "label": "pecans"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Pecans are sweeter and less bitter."
+    },
+    {
+      "a": {
+        "name": "hazelnut",
+        "form": null,
+        "label": "hazelnuts"
+      },
+      "b": {
+        "name": "almond",
+        "form": null,
+        "label": "almonds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight and form, toasted. Almonds are milder."
+    },
+    {
+      "a": {
+        "name": "pistachio",
+        "form": null,
+        "label": "pistachios"
+      },
+      "b": {
+        "name": "almond",
+        "form": null,
+        "label": "almonds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Almonds are milder and you lose the green colour."
+    },
+    {
+      "a": {
+        "name": "pumpkin seed",
+        "form": null,
+        "label": "pumpkin seeds"
+      },
+      "b": {
+        "name": "sunflower seed",
+        "form": null,
+        "label": "sunflower seeds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight, toasted. Sunflower seeds are smaller and milder."
+    },
+    {
+      "a": {
+        "name": "sesame seeds",
+        "form": null,
+        "label": "white sesame seeds"
+      },
+      "b": {
+        "name": "black sesame seeds",
+        "form": null,
+        "label": "black sesame seeds"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Black sesame are earthier and slightly bitter; mostly for looks."
+    },
+    {
+      "a": {
+        "name": "peanut",
+        "form": null,
+        "label": "peanuts"
+      },
+      "b": {
+        "name": "cashew",
+        "form": null,
+        "label": "cashews"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Cashews are sweeter and softer."
+    },
+    {
+      "a": {
+        "name": "peanut butter",
+        "form": null,
+        "label": "peanut butter"
+      },
+      "b": {
+        "name": "almond butter",
+        "form": null,
+        "label": "almond butter"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Almond butter is milder and often runnier."
+    },
+    {
+      "a": {
+        "name": "tahini",
+        "form": null,
+        "label": "tahini"
+      },
+      "b": {
+        "name": "cashew butter",
+        "form": null,
+        "label": "smooth unsweetened cashew butter"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Same amount. Milder and sweeter than tahini; add a little extra lemon. Works in dressings and hummus."
+    },
+    {
+      "a": {
+        "name": "basmati rice",
+        "form": "uncooked or raw or dry or dried",
+        "label": "uncooked basmati rice"
+      },
+      "b": {
+        "name": "basmati rice",
+        "form": "cooked",
+        "label": "cooked basmati rice"
+      },
+      "factor": 2.5,
+      "similarity": 3,
+      "note": "Weight only: rice weighs roughly 2½ times as much once cooked. Leftover cooked rice is best for fried rice."
+    },
+    {
+      "a": {
+        "name": "jasmine rice",
+        "form": "uncooked or raw or dry or dried",
+        "label": "uncooked jasmine rice"
+      },
+      "b": {
+        "name": "jasmine rice",
+        "form": "cooked",
+        "label": "cooked jasmine rice"
+      },
+      "factor": 2.5,
+      "similarity": 3,
+      "note": "Weight only: rice weighs roughly 2½ times as much once cooked. Chill leftovers quickly."
+    },
+    {
+      "a": {
+        "name": "basmati rice",
+        "form": null,
+        "label": "basmati rice"
+      },
+      "b": {
+        "name": "jasmine rice",
+        "form": null,
+        "label": "jasmine rice"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Jasmine is softer and slightly sticky with a floral smell; basmati grains stay separate."
+    },
+    {
+      "a": {
+        "name": "basmati rice",
+        "form": null,
+        "label": "basmati rice"
+      },
+      "b": {
+        "name": "white rice",
+        "form": null,
+        "label": "long-grain white rice"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Long-grain rice is less fragrant; cook it the same way."
+    },
+    {
+      "a": {
+        "name": "white rice",
+        "form": null,
+        "label": "white rice"
+      },
+      "b": {
+        "name": "brown rice",
+        "form": null,
+        "label": "brown rice"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Brown rice takes about twice as long and needs more water. It's nuttier and chewier."
+    },
+    {
+      "a": {
+        "name": "spaghetti",
+        "form": null,
+        "label": "spaghetti"
+      },
+      "b": {
+        "name": "linguine",
+        "form": null,
+        "label": "linguine"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Check the packet for cooking time."
+    },
+    {
+      "a": {
+        "name": "pappardelle",
+        "form": null,
+        "label": "pappardelle"
+      },
+      "b": {
+        "name": "tagliatelle",
+        "form": null,
+        "label": "tagliatelle"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Tagliatelle is narrower; check the packet for cooking time."
+    },
+    {
+      "a": {
+        "name": "orecchiette",
+        "form": null,
+        "label": "orecchiette"
+      },
+      "b": {
+        "name": "conchiglie",
+        "form": null,
+        "label": "small pasta shells"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Small shells catch the sauce in the same way; check the cooking time."
+    },
+    {
+      "a": {
+        "name": "macaroni",
+        "form": null,
+        "label": "macaroni"
+      },
+      "b": {
+        "name": "penne",
+        "form": null,
+        "label": "penne"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Check the packet for cooking time."
+    },
+    {
+      "a": {
+        "name": "orzo",
+        "form": null,
+        "label": "orzo"
+      },
+      "b": {
+        "name": "giant couscous",
+        "form": null,
+        "label": "giant couscous"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Both are small pasta; giant couscous is rounder and chewier."
+    },
+    {
+      "a": {
+        "name": "pearl barley",
+        "form": null,
+        "label": "pearl barley"
+      },
+      "b": {
+        "name": "pearled spelt",
+        "form": null,
+        "label": "pearled spelt"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Spelt is nuttier and cooks a little faster."
+    },
+    {
+      "a": {
+        "name": "bulgur wheat",
+        "form": null,
+        "label": "bulgur wheat"
+      },
+      "b": {
+        "name": "couscous",
+        "form": null,
+        "label": "couscous"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Couscous only needs soaking in boiling water and is softer; bulgur needs longer."
+    },
+    {
+      "a": {
+        "name": "firm tofu",
+        "form": null,
+        "label": "firm tofu"
+      },
+      "b": {
+        "name": "extra-firm tofu",
+        "form": null,
+        "label": "extra-firm tofu"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight. Extra-firm needs little or no pressing."
+    },
+    {
+      "a": {
+        "name": "firm tofu",
+        "form": null,
+        "label": "firm tofu"
+      },
+      "b": {
+        "name": "smoked tofu",
+        "form": null,
+        "label": "smoked tofu"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Smoked tofu is firmer and already flavoured, so season the dish less."
+    },
+    {
+      "a": {
+        "name": "firm tofu",
+        "form": null,
+        "label": "firm tofu"
+      },
+      "b": {
+        "name": "tempeh",
+        "form": null,
+        "label": "tempeh"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Same weight. Tempeh is denser and nuttier. Steam it for 10 minutes first to soften any bitterness."
+    },
+    {
+      "a": {
+        "name": "silken tofu",
+        "form": null,
+        "label": "silken tofu"
+      },
+      "b": {
+        "name": "soft tofu",
+        "form": null,
+        "label": "soft tofu"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Soft tofu is slightly firmer; both blend into sauces and desserts."
+    },
+    {
+      "a": {
+        "name": "white miso",
+        "form": null,
+        "label": "white miso"
+      },
+      "b": {
+        "name": "red miso",
+        "form": null,
+        "label": "red or brown miso"
+      },
+      "factor": 0.5,
+      "similarity": 2,
+      "note": "Red miso is saltier and stronger, so use about half as much as white. White is sweeter."
+    },
+    {
+      "a": {
+        "name": "soy sauce",
+        "form": null,
+        "label": "soy sauce"
+      },
+      "b": {
+        "name": "tamari",
+        "form": null,
+        "label": "tamari"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same amount. Tamari is usually gluten-free (check the label) and a little richer."
+    },
+    {
+      "a": {
+        "name": "soy sauce",
+        "form": null,
+        "label": "light soy sauce"
+      },
+      "b": {
+        "name": "dark soy sauce",
+        "form": null,
+        "label": "dark soy sauce"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Dark soy is thicker, sweeter and less salty, mainly for colour; light soy is saltier. Season to taste."
+    },
+    {
+      "a": {
+        "name": "soy sauce",
+        "form": null,
+        "label": "soy sauce"
+      },
+      "b": {
+        "name": "coconut aminos",
+        "form": null,
+        "label": "coconut aminos"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Coconut aminos is sweeter and much less salty; add a pinch of salt."
+    },
+    {
+      "a": {
+        "name": "vegetarian fish sauce",
+        "form": null,
+        "label": "vegetarian fish sauce"
+      },
+      "b": {
+        "name": "soy sauce",
+        "form": null,
+        "label": "soy sauce"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Same amount. Soy sauce is less funky and slightly sweeter; add a squeeze of lime."
+    },
+    {
+      "a": {
+        "name": "salt",
+        "form": "fine or table",
+        "label": "fine salt"
+      },
+      "b": {
+        "name": "salt",
+        "form": "flakes or flaky",
+        "label": "flaky sea salt"
+      },
+      "factor": 2,
+      "similarity": 3,
+      "note": "Spoon only: flakes are lighter, so 2 spoons of flakes match 1 of fine. By weight they're equally salty."
+    },
+    {
+      "a": {
+        "name": "dijon mustard",
+        "form": null,
+        "label": "Dijon mustard"
+      },
+      "b": {
+        "name": "wholegrain mustard",
+        "form": null,
+        "label": "wholegrain mustard"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Wholegrain is milder and seedy; Dijon is smoother and sharper."
+    },
+    {
+      "a": {
+        "name": "dijon mustard",
+        "form": null,
+        "label": "Dijon mustard"
+      },
+      "b": {
+        "name": "english mustard",
+        "form": null,
+        "label": "English mustard"
+      },
+      "factor": 0.5,
+      "similarity": 1,
+      "note": "English mustard is much hotter, so use about half as much."
+    },
+    {
+      "a": {
+        "name": "caper",
+        "form": null,
+        "label": "capers"
+      },
+      "b": {
+        "name": "green olive",
+        "form": null,
+        "label": "green olives, chopped"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Same amount, chopped. Olives give a similar briny, salty hit."
+    },
+    {
+      "a": {
+        "name": "green olive",
+        "form": null,
+        "label": "green olives"
+      },
+      "b": {
+        "name": "black olive",
+        "form": null,
+        "label": "black olives"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Black olives are milder and softer."
+    },
+    {
+      "a": {
+        "name": "kalamata olive",
+        "form": null,
+        "label": "Kalamata olives"
+      },
+      "b": {
+        "name": "black olive",
+        "form": null,
+        "label": "black olives"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same amount. Kalamatas are fruitier and more winey; plain pitted black olives are milder."
+    },
+    {
+      "a": {
+        "name": "sauerkraut",
+        "form": null,
+        "label": "sauerkraut"
+      },
+      "b": {
+        "name": "kimchi",
+        "form": null,
+        "label": "kimchi"
+      },
+      "factor": 1,
+      "similarity": 1,
+      "note": "Same amount. Kimchi is spicy and garlicky; sauerkraut is plainly sour."
+    },
+    {
+      "a": {
+        "name": "salmon fillet",
+        "form": null,
+        "label": "salmon fillet"
+      },
+      "b": {
+        "name": "trout fillet",
+        "form": null,
+        "label": "trout fillet"
+      },
+      "factor": 1,
+      "similarity": 2,
+      "note": "Same weight. Trout is milder and thinner, so it cooks faster."
+    },
+    {
+      "a": {
+        "name": "hot-smoked salmon",
+        "form": null,
+        "label": "hot-smoked salmon"
+      },
+      "b": {
+        "name": "hot-smoked trout",
+        "form": null,
+        "label": "hot-smoked trout"
+      },
+      "factor": 1,
+      "similarity": 3,
+      "note": "Same weight; flake it the same way. Trout is slightly milder."
+    }
+  ]
+}

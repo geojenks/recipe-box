@@ -22,6 +22,7 @@ const state = {
   notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]
   canNote: null,          // can this user write to the notes sheet?
   photos: new Map(),      // fileId -> Promise<objectURL|null>
+  saved: null,            // {savedAt} while showing this device's saved copy, signed out
   search: { text: '', ingredients: [], missing: [], course: '', showHidden: false },
 };
 const emptySearch = (text = '') => ({ text, ingredients: [], missing: [], course: '', showHidden: false });
@@ -93,6 +94,7 @@ const ticks = (() => {
       this.save();
     },
     setPos(id, pos) { const t = this.get(id); t.pos = pos; t.at = Date.now(); this.save(); },
+    setScale(id, f) { const t = this.get(id); t.scale = f; t.at = Date.now(); this.save(); },
     save() { try { localStorage.setItem(TICKS_KEY, JSON.stringify(all)); } catch { /* fine */ } },
   };
 })();
@@ -144,6 +146,22 @@ function setSignedIn(on) {
   document.querySelector('.topbar nav a').hidden = !on;
 }
 
+/** Sign in from a button. From the saved copy, a cancelled sign-in just leaves you where you were. */
+async function signIn() {
+  try {
+    if (!tokenClient) { await waitForGsi(); initTokenClient(); } // didn't load when the book opened offline
+    await requestToken('');
+    await start();
+  } catch (e) {
+    if (state.saved) {
+      if (e.message !== 'access_denied') banner(`Could not sign in: ${esc(e.message)}`, 'warn');
+      return;
+    }
+    showSignIn(e.message === 'access_denied' ? 'Sign-in was cancelled.' : e.message);
+  }
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-signin]')) signIn(); });
+
 function showSignIn(message = '') {
   leaveCooking();
   setSignedIn(false);
@@ -156,14 +174,7 @@ function showSignIn(message = '') {
         <button class="button primary" id="signin">Sign in with Google</button>
       </div>
     </section>`;
-  document.getElementById('signin').onclick = async () => {
-    try {
-      await requestToken('');
-      await start();
-    } catch (e) {
-      showSignIn(e.message === 'access_denied' ? 'Sign-in was cancelled.' : e.message);
-    }
-  };
+  document.getElementById('signin').onclick = signIn;
 }
 
 function signOut() {
@@ -172,12 +183,22 @@ function signOut() {
   state.token = null;
   state.user = null;
   state.canNote = null;
+  state.notes = null;
+  state.saved = null;
+  state.photos.clear();
+  forgetSaved(); // signing out also removes the saved copy from this device
+  banner('');
   showSignIn();
 }
 document.getElementById('signout').onclick = signOut;
 
 /** fetch() against Google APIs, re-requesting the token once if it has expired. */
 async function gfetch(url, opts = {}, retry = true) {
+  if (!state.token) {
+    const err = new Error('Sign in to do this.');
+    err.status = 401;
+    throw err;
+  }
   const res = await fetch(url, { ...opts, headers: { ...opts.headers, Authorization: `Bearer ${state.token}` } });
   if (res.status === 401 && retry) {
     banner('Your sign-in expired. <button id="reauth" class="link">Continue</button>', 'warn');
@@ -203,13 +224,43 @@ const driveFile = (id) => `https://www.googleapis.com/drive/v3/files/${encodeURI
 const driveMeta = (id, fields) => `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true&fields=${encodeURIComponent(fields)}`;
 const sheetsBase = () => `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(CFG.sheetId)}`;
 
+// ---------- saved copy: lets the book open on this device without signing in ----------
+
+const SAVED = 'rb-saved';
+const savedKey = (name) => new URL(`saved/${name}`, location.href).href;
+
+async function savedPut(name, body, type = 'application/json') {
+  if (DEMO || !window.caches) return;
+  try {
+    await (await caches.open(SAVED)).put(savedKey(name), new Response(body, { headers: { 'Content-Type': type } }));
+  } catch { /* storage full or blocked: the book still works signed in */ }
+}
+
+async function savedGet(name) {
+  if (DEMO || !window.caches) return null;
+  try { return (await (await caches.open(SAVED)).match(savedKey(name))) || null; } catch { return null; }
+}
+
+async function forgetSaved() {
+  try { await caches.delete(SAVED); } catch { /* fine */ }
+}
+
 async function loadRecipes() {
-  const data = DEMO
-    ? await (await fetch('demo/recipes.json', { cache: 'no-store' })).json()
-    : await (await gfetch(driveFile(CFG.recipesFileId))).json();
+  let data;
+  if (DEMO) {
+    data = await (await fetch('demo/recipes.json', { cache: 'no-store' })).json();
+  } else if (!state.token) {
+    data = await (await savedGet('recipes.json')).json();
+  } else {
+    const text = await (await gfetch(driveFile(CFG.recipesFileId))).text();
+    data = JSON.parse(text);
+    savedPut('recipes.json', text).then(() => savedPut('about.json', JSON.stringify({ savedAt: new Date().toISOString() })));
+    navigator.storage?.persist?.().catch(() => {});
+  }
   state.recipes = data.recipes.slice().sort((a, b) => a.title.localeCompare(b.title));
   state.byId = new Map(state.recipes.map((r) => [r.id, r]));
   buildIngredientIndex();
+  if (!swapIndex) await loadSwaps();
 }
 
 function buildIngredientIndex() {
@@ -230,13 +281,28 @@ function buildIngredientIndex() {
   state.mainCounts = null;
 }
 
+// A failed download isn't remembered, so the next time the photo is shown it's tried again.
+const forget = (key) => { state.photos.delete(key); return null; };
+
 function photoUrl(fileId) {
   if (!fileId) return Promise.resolve(null);
   if (!state.photos.has(fileId)) {
     state.photos.set(fileId, (DEMO ? Promise.resolve(`demo/${fileId}`) :
-      gfetch(driveFile(fileId)).then((r) => r.blob()).then((b) => URL.createObjectURL(b))).catch(() => null));
+      photoBlob(fileId).then((b) => (b ? URL.createObjectURL(b) : forget(fileId)))).catch(() => forget(fileId)));
   }
   return state.photos.get(fileId);
+}
+
+/** A photo from this device's saved copy, or from Drive (then saved). Photo files are never
+ * changed in place (a new photo gets a new file), so a saved one is always current. */
+async function photoBlob(fileId) {
+  const name = `photo/${encodeURIComponent(fileId)}`;
+  const saved = await savedGet(name);
+  if (saved) return saved.blob();
+  if (!state.token) return null;
+  const blob = await (await gfetch(driveFile(fileId))).blob();
+  savedPut(name, blob, blob.type || 'image/jpeg');
+  return blob;
 }
 
 /** The recipe's picture; when the dish photo sits inside a page picture, cut it out. */
@@ -244,7 +310,7 @@ function recipePhotoUrl(r) {
   if (!r.photoCrop) return photoUrl(r.photoFileId);
   const key = `${r.photoFileId}#${JSON.stringify(r.photoCrop)}`;
   if (!state.photos.has(key)) {
-    state.photos.set(key, photoUrl(r.photoFileId).then((url) => url && cropImage(url, r.photoCrop)).catch(() => null));
+    state.photos.set(key, photoUrl(r.photoFileId).then((url) => (url ? cropImage(url, r.photoCrop) : forget(key))).catch(() => forget(key)));
   }
   return state.photos.get(key);
 }
@@ -271,16 +337,23 @@ async function loadNotes() {
     try { state.notes = JSON.parse(localStorage.getItem('rb-demo-notes') || '[]'); } catch { state.notes = []; }
     return;
   }
+  if (!state.token) {
+    const saved = await savedGet('notes.json');
+    state.notes = saved ? await saved.json() : [];
+    return;
+  }
   const res = await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Notes!A2:F')}`);
   const rows = (await res.json()).values || [];
   state.notes = rows
     .map((v, i) => ({ row: i + 2, id: v[0], recipeId: v[1], timestamp: v[2], email: v[3], name: v[4], text: v[5] }))
     .filter((n) => n.id && n.text);
+  savedPut('notes.json', JSON.stringify(state.notes));
 }
 
 /** Everyone can read the notes sheet, but only editors can add to it. */
 async function canWriteNotes() {
   if (DEMO) return true;
+  if (!state.token) return false;
   if (state.canNote == null) {
     try {
       state.canNote = !!(await (await gfetch(driveMeta(CFG.sheetId, 'capabilities(canEdit)'))).json()).capabilities?.canEdit;
@@ -511,6 +584,7 @@ function recipeCard(r) {
       <a class="card-link" href="#/r/${encodeURIComponent(r.id)}">
         <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}" style="--shift:${hash(r.id) % 32}px"></div>
         <h3>${esc(r.title)}</h3>
+        ${r.author || r.book ? `<p class="meta source-line">${esc([r.author, r.book].filter(Boolean).join(' · '))}</p>` : ''}
         <p class="meta">${[t, r.servings && `serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}${equipment(r).length ? `<span class="kit" aria-label="Equipment">${kitIcons(r)}</span>` : ''}</p>
         ${uses.length ? `<p class="meta uses-line">${icon('check')}<span>Uses ${esc(uses.join(', '))}</span></p>` : ''}
         ${needs.length ? `<p class="meta needs-line">Needs ${esc(needs.join(', '))}</p>` : ''}
@@ -783,20 +857,399 @@ function renderHome() {
   update();
 }
 
-function ingredientLine(i) {
-  return `<b>${esc([i.quantity, i.unit].filter(Boolean).join(' '))}</b> ${esc(i.name)}${i.preparation ? `, <i>${esc(i.preparation)}</i>` : ''}${i.optional ? ' <small class="muted">(optional)</small>' : ''}`;
+// ---------- scaling: everything is multiplied by one factor, kept with the ticks ----------
+// Quantities are free text as written ("1 1/2", "200", "2-3", "a pinch"), so only the
+// first number (and the second of a range) is scaled; the rest is kept as it is.
+
+const VULGAR = { '¼': 1 / 4, '½': 1 / 2, '¾': 3 / 4, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 1 / 8, '⅜': 3 / 8, '⅝': 5 / 8, '⅞': 7 / 8 };
+const NUM = String.raw`\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?(?:\s*[¼½¾⅓⅔⅛⅜⅝⅞])?|\.\d+|[¼½¾⅓⅔⅛⅜⅝⅞]`;
+const AMOUNT = new RegExp(`(${NUM})(?:(\\s*(?:-|–|to|or)\\s*)(${NUM}))?`);
+const DECIMAL_UNITS = new Set(['g', 'gram', 'kg', 'mg', 'ml', 'cl', 'dl', 'l', 'litre', 'liter']);
+
+/** "1 1/2", "1½", "3/4", "0.5" or "½" as a number. */
+function parseNumber(s) {
+  s = s.trim();
+  let m;
+  if ((m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/))) return +m[1] + m[2] / m[3];
+  if ((m = s.match(/^(\d+)\/(\d+)$/))) return m[1] / m[2];
+  if ((m = s.match(/^(\d*\.?\d*)\s*([¼½¾⅓⅔⅛⅜⅝⅞])$/))) return (+m[1] || 0) + VULGAR[m[2]];
+  return parseFloat(s);
 }
 
-/** Ingredient checklist; ticks are shared with cooking mode. */
+/** The first amount in some text: {value, index, length} or null. */
+function firstAmount(text) {
+  const m = AMOUNT.exec(text || '');
+  const value = m && parseNumber(m[1]);
+  return value > 0 ? { value, m } : null;
+}
+
+/** Kitchen-friendly rounding: grams and millilitres as decimals, everything else in quarters and thirds. */
+function fmtAmount(v, unit) {
+  if (DECIMAL_UNITS.has((unit || '').toLowerCase().replace(/\.$/, '').replace(/s$/, ''))) {
+    const r = v >= 100 ? Math.round(v / 5) * 5 : v >= 10 ? Math.round(v) : +v.toPrecision(2);
+    return String(r);
+  }
+  if (v >= 10) return String(Math.round(v));
+  const fracs = v < 1 ? [0, 1 / 8, 1 / 4, 1 / 3, 1 / 2, 2 / 3, 3 / 4, 1] : [0, 1 / 4, 1 / 3, 1 / 2, 2 / 3, 3 / 4, 1];
+  let whole = Math.floor(v);
+  let frac = fracs.reduce((a, b) => (Math.abs(b - (v - whole)) < Math.abs(a - (v - whole)) ? b : a));
+  if (frac === 1) { whole += 1; frac = 0; }
+  if (!whole && !frac) frac = 1 / 8;
+  const glyph = Object.keys(VULGAR).find((k) => Math.abs(VULGAR[k] - frac) < 1e-9) || '';
+  return `${whole || ''}${glyph}` || '0';
+}
+
+/** Text with its first amount (or range) multiplied by f; unchanged when it has no amount. */
+function scaleText(text, f, unit) {
+  const a = firstAmount(text);
+  if (!a || Math.abs(f - 1) < 1e-9) return text;
+  const [all, , sep, second] = a.m;
+  const to = second ? `${sep}${fmtAmount(parseNumber(second) * f, unit)}` : '';
+  return text.slice(0, a.m.index) + fmtAmount(a.value * f, unit) + to + text.slice(a.m.index + all.length);
+}
+
+const scaleOf = (r) => ticks.get(r.id).scale || 1;
+const isScaled = (r) => Math.abs(scaleOf(r) - 1) > 1e-9;
+/** Serves (or makes) how many, as a number, when the recipe says. */
+const baseServings = (r) => firstAmount(r.servings)?.value || null;
+
+function ingredientLine(i, f = 1, editable = '') {
+  const amount = [scaleText(i.quantity, f, i.unit), i.unit].filter(Boolean).join(' ');
+  const amountHtml = editable && firstAmount(i.quantity)
+    ? `<button type="button" class="amount" data-amount="${editable}" aria-label="Change the amount of ${esc(i.name)}, now ${esc(amount)}">${esc(amount)}</button>`
+    : `<b>${esc(amount)}</b>`;
+  return `${amountHtml} ${esc(i.name)}${i.preparation ? `, <i>${esc(i.preparation)}</i>` : ''}${i.optional ? ' <small class="muted">(optional)</small>' : ''}`;
+}
+
+// ---------- swaps: close equivalents for an ingredient, from swaps.json ----------
+// Each pair says how much of b replaces 1 of a (factor, in the same unit unless the sides
+// give units), how alike they are (1 to 3), and what changes.
+
+const LIKENESS = { 3: 'Barely notice', 2: 'Small difference', 1: 'Works in a pinch' };
+// A line with no form word is taken to be fresh (herbs, tomatoes), fine (salt) or uncooked (rice).
+const DEFAULT_FORMS = new Set(['fresh', 'fine', 'uncooked']);
+const WEIGHT_UNITS = /^(g|gram|kg|kilo|oz|ounce|lb|pound)$/;
+const SPOON_UNITS = /^(tsp|tbsp)$/;
+let swapIndex = null; // swapKey(name) -> [{e, from: 'a' or 'b'}]
+const openSwaps = new Set(); // "recipeId gi-ii" of swap lists left open, so rescaling keeps them
+
+/** Lower case, no accents or hyphens, last word singular: "Flat-leaf parsley" meets "flat leaf parsley". */
+function swapKey(name) {
+  return String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/yogurt/g, 'yoghurt').replace(/\bsoured\b/g, 'sour').replace(/[-\s]+/g, ' ').trim()
+    .replace(/chillies$/, 'chilli').replace(/leaves$/, 'leaf')
+    .replace(/(oes|ies|[sc]hes|s)$/, (m) => (m === 'ies' ? 'y' : m === 's' ? '' : m.slice(0, -2)));
+}
+
+/** "g jar" -> "g", "teaspoons" -> "tsp", "cloves" -> "clove". */
+function unitWord(unit) {
+  const u = swapKey(String(unit || '').split(/[\s(,]/)[0]).replace(/\.$/, '');
+  return { teaspoon: 'tsp', tablespoon: 'tbsp', tbs: 'tbsp', tblsp: 'tbsp' }[u] || u;
+}
+
+async function loadSwaps() {
+  try {
+    const res = await fetch('swaps.json');
+    if (!res.ok) throw new Error(res.status);
+    const text = await res.text();
+    indexSwaps(JSON.parse(text));
+    savedPut('swaps.json', text);
+  } catch {
+    const saved = await savedGet('swaps.json'); // offline
+    if (saved) indexSwaps(await saved.json());
+  }
+}
+
+function indexSwaps(data) {
+  swapIndex = new Map();
+  formWords = new Set();
+  for (const e of data.swaps) {
+    for (const from of ['a', 'b']) {
+      const k = swapKey(e[from].name);
+      if (!swapIndex.has(k)) swapIndex.set(k, []);
+      swapIndex.get(k).push({ e, from });
+      for (const w of formsOf(e[from]) || []) formWords.add(w);
+    }
+  }
+}
+
+// A strong form word on the line ("ground", "jarred") has to be in the swap's own name or label too:
+// ground coriander is not fresh coriander. Softer words ("chopped", "handful") don't rule anything out.
+const STRONG_FORMS = [['dried', 'dry'], ['tin', 'tinned', 'can', 'canned', 'jar', 'jarred', 'pouch'], ['frozen'], ['cooked'],
+  ['ground'], ['powder'], ['paste', 'puree', 'purée'], ['flakes'], ['granules'], ['cube', 'cubes', 'bouillon']];
+const strongGroup = (w) => STRONG_FORMS.find((g) => g.includes(w));
+let formWords = new Set(); // every form word in swaps.json
+const VARIETY = new Set(['mature', 'mild', 'medium', 'strong', 'extra', 'large', 'small', 'big', 'baby', 'banana', 'vine',
+  'ripe', 'swiss', 'rainbow', 'plain', 'natural', 'apple', 'sea', 'unsalted', 'salted', 'organic', 'brown', 'light', 'soft']);
+
+/** Whole word, plural allowed: "tin" is in "2 x 400g tins" but not in "tint". */
+const hasWord = (text, w) => new RegExp(`(?<!\\p{L})${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:e?s)?(?!\\p{L})`, 'iu').test(text);
+const formsOf = (side) => (side.form ? side.form.split(' or ') : null);
+
+function swapSides(item) {
+  // The canonical name first, then the name as written: canonical "tofu" may be "firm tofu" on the line.
+  for (const key of new Set([swapKey(canon(item)), swapKey(item.name || '')])) {
+    if (!key) continue;
+    const words = key.split(' ');
+    const tries = [key, key.replace(/^(dried|fresh|frozen|tinned|canned|ground|whole) /, '')];
+    if (words.length > 1 && formWords.has(words.at(-1))) tries.push(words.slice(0, -1).join(' ')); // "stock cube"
+    // "mature cheddar", "light soy sauce": only words that don't change what it is, so not "preserved lemon".
+    for (let i = 0; i < words.length - 1 && VARIETY.has(words[i]); i++) tries.push(words.slice(i + 1).join(' '));
+    for (const k of tries) if (swapIndex.has(k)) return swapIndex.get(k);
+  }
+  return [];
+}
+
+/** The swaps for an ingredient line, closest first: [{from, to, factor, likeness, note}]. */
+function swapsFor(item) {
+  if (!swapIndex) return [];
+  const sides = swapSides(item);
+  // The form is in the name or the unit ("dried chickpeas", "400g tin"). Not the preparation:
+  // "tomatoes, chopped" are fresh, though "chopped" is a word for tinned tomatoes.
+  const text = [item.canonical, item.name, item.unit].filter(Boolean).join(' ');
+  const onLine = [...formWords].filter((w) => hasWord(text, w));
+  const known = new Set(sides.flatMap(({ e, from }) => formsOf(e[from]) || []));
+  const said = onLine.filter((w) => known.has(w));
+  // "chickpeas, drained and rinsed" came from a tin, if tinned is a form this ingredient has.
+  if (!said.length && known.has('tinned') && /\b(drained|rinsed)\b/i.test(item.preparation || '')) said.push('tinned');
+  const strong = onLine.filter((w) => !said.includes(w)).map(strongGroup).filter(Boolean);
+  const seen = new Set();
+  return sides.filter(({ e, from }) => {
+    const side = e[from];
+    const forms = formsOf(side);
+    const fits = (!forms || (said.length ? forms.some((w) => said.includes(w)) : forms.some((w) => DEFAULT_FORMS.has(w))))
+      && strong.every((g) => g.some((w) => hasWord(`${side.name} ${side.label}`, w)));
+    // "chilli flakes, plus a pinch of smoked paprika" says what to use; it only works one way.
+    if (!fits || seen.has(e) || / plus /.test(side.label)) return false;
+    seen.add(e);
+    return true;
+  }).map(({ e, from }) => ({
+    from: e[from], to: e[from === 'a' ? 'b' : 'a'], factor: from === 'a' ? e.factor : 1 / e.factor, likeness: e.similarity, note: e.note,
+  })).sort((x, y) => y.likeness - x.likeness);
+}
+
+const DRAINED = 0.6; // a 400g tin of beans or chickpeas holds about 240g drained
+
+/** How much of the swap to use for this line at this scale, e.g. "240 g"; '' when it can't say. */
+function swapAmount(item, f, s) {
+  const a = firstAmount(item.quantity);
+  if (!a) return '';
+  let v = a.value * f * s.factor;
+  let unit = unitWord(item.unit);
+  if (s.from.unit) { // the swap changes unit: per clove, ¼ tsp
+    if (unit !== s.from.unit && (unit || SPOON_UNITS.test(s.from.unit))) return '';
+    const plural = v > 1 && !SPOON_UNITS.test(s.to.unit) ? (s.to.unit.endsWith('i') ? 'es' : 's') : '';
+    return `${fmtAmount(v, s.to.unit)} ${s.to.unit}${plural}`;
+  }
+  // Tins by size ("400g tin", "2 x 400g tins") to dried: go by what's in them once drained.
+  const tin = String(item.unit || '').match(/(?:^|x\s*)(\d+)\s*g\b.*\b(tin|can|jar)s?\b|^g\s+(tin|can|jar)s?\b/i);
+  if (tin && /drained/.test(s.from.label)) {
+    v *= (tin[1] ? +tin[1] : 1) * DRAINED;
+    unit = 'g';
+  }
+  const kind = WEIGHT_UNITS.test(unit) ? 'weight' : SPOON_UNITS.test(unit) ? 'spoon' : unit ? 'other' : 'count';
+  const note = s.note.toLowerCase();
+  if (/^by weight or spoon/.test(note)) { if (kind !== 'weight' && kind !== 'spoon') return ''; }
+  else if (/^(weight only|weight for weight|same weight|by weight)/.test(note) && kind !== 'weight') return '';
+  else if (/^spoon (only|for spoon)/.test(note) && kind !== 'spoon') return '';
+  if (kind === 'other' && Math.abs(s.factor - 1) > 0.01) return '';
+  if (kind === 'count' && Math.abs(s.factor - 1) > 0.01 && !/count/.test(note)) return '';
+  const shown = tin && unit === 'g' ? 'g' : kind === 'weight' || kind === 'spoon' ? String(item.unit).split(/[\s(,]/)[0] : item.unit;
+  const amount = [fmtAmount(v, shown), shown].filter(Boolean).join(' ');
+  // Dried to tinned: say how many tins that is.
+  if (kind === 'weight' && /drained/.test(s.to.label) && /^(g|gram|kg|kilo)$/.test(unit)) {
+    const tins = Math.round((v * (/^k/.test(unit) ? 1000 : 1)) / (400 * DRAINED) * 2) / 2;
+    if (tins >= 0.5) return `${amount} (about ${fmtAmount(tins, '')} × 400g tin${tins > 1 ? 's' : ''})`;
+  }
+  return amount;
+}
+
+function swapList(item, f, swaps = swapsFor(item)) {
+  return `<div class="swaps">
+    <ul>${swaps.map((s) => {
+      const amount = swapAmount(item, f, s);
+      // Only when it narrows things down: "cornflour (for coating)", not just "chilli flakes".
+      const instead = /[(,]/.test(s.from.label) ? `<p class="swaps-head">Instead of ${esc(s.from.label)}</p>` : '';
+      return `<li>
+        ${instead}
+        <p class="swap-name"><b>${esc(s.to.label)}</b>${amount ? `<span class="swap-amount">${esc(amount)}</span>` : ''}</p>
+        <p class="likeness l${s.likeness}"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>${LIKENESS[s.likeness]}</p>
+        <p class="swap-note">${esc(s.note)}</p>
+      </li>`;
+    }).join('')}</ul>
+  </div>`;
+}
+
+/** Opens and closes the swap lists inside root, in place. */
+function wireSwaps(root, r) {
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-swap]');
+    if (!btn) return;
+    const key = `${r.id} ${btn.dataset.swap}`;
+    const li = btn.closest('li');
+    const open = li.querySelector('.swaps');
+    if (open) {
+      open.remove();
+      openSwaps.delete(key);
+    } else {
+      const [gi, ii] = btn.dataset.swap.split('-').map(Number);
+      li.insertAdjacentHTML('beforeend', swapList(r.ingredientGroups[gi].items[ii], scaleOf(r)));
+      openSwaps.add(key);
+    }
+    btn.setAttribute('aria-expanded', String(!open));
+  });
+}
+
+/** Ingredient checklist, scaled; ticks and the scale are shared with cooking mode. */
 function ingredientList(r) {
+  const f = scaleOf(r);
   return r.ingredientGroups.map((g, gi) => `
     ${g.name ? `<h3 class="group-name">${esc(g.name)}</h3>` : ''}
-    <ul class="checklist">${g.items.map((i, ii) => `
-      <li class="${state.ingredients.get(canon(i))?.staple ? 'staple' : ''}">
-        <label class="tick"><input type="checkbox" data-tick="ing:${gi}-${ii}" ${ticks.has(r.id, 'ing', `${gi}-${ii}`) ? 'checked' : ''}>
-        <span>${ingredientLine(i)}</span></label>
-      </li>`).join('')}
+    <ul class="checklist">${g.items.map((i, ii) => {
+      const key = `${gi}-${ii}`;
+      const swaps = swapsFor(i);
+      const open = swaps.length > 0 && openSwaps.has(`${r.id} ${key}`);
+      const cls = [state.ingredients.get(canon(i))?.staple && 'staple', swaps.length && 'has-swaps'].filter(Boolean).join(' ');
+      return `
+      <li class="${cls}">
+        <label class="tick"><input type="checkbox" data-tick="ing:${key}" ${ticks.has(r.id, 'ing', key) ? 'checked' : ''}>
+        <span>${ingredientLine(i, f, key)}</span></label>
+        ${swaps.length ? `<button type="button" class="swap-btn" data-swap="${key}" aria-expanded="${open}" aria-label="Swaps for ${esc(i.name)}" title="Swaps">${icon('swap')}</button>` : ''}
+        ${open ? swapList(i, f, swaps) : ''}
+      </li>`;
+    }).join('')}
     </ul>`).join('');
+}
+
+/** How many it serves, with − and + to change it, and a way back to the original. */
+// A tin, dish or tray in the oven: to keep the same depth, its area has to change by the
+// same factor as the amounts, so each side changes by the square root. Loaf tins go by weight.
+const TIN_KINDS = new Set(['roasting tin', 'baking tray', 'baking dish', 'cake tin']);
+const TIN_SIZE = /(\d+(?:\.\d+)?)\s*(?:cm)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*cm|(\d+(?:\.\d+)?)\s*cm\b|(\d+(?:\.\d+)?)\s*(g|kg|lb)\b(?=\s+loaf)/gi;
+// The same size in inches may follow; then up to three words before the tin, so "2cm pieces
+// and put in a dish" doesn't count.
+const INCHES = String.raw`[\d.]+(?:\s*(?:x|×|by)\s*[\d.]+)?\s*(?:in|inch|inches|")`;
+const TIN_AFTER = new RegExp(String.raw`^(?:\s*\(${INCHES}\)|\s*\/\s*${INCHES})?((?:[\s-]+[a-z]+){0,3}?[\s-]+(?:springform(?:\s+tin)?|tin|dish|tray|pan|sheet))\b`, 'i');
+const COUNT_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six'];
+
+/** The tin the recipe gives a size for, e.g. {sides: [30, 20], text: '30 x 20cm', what: 'roasting tin'}; else null. */
+function tinSize(r) {
+  for (const t of [...r.steps.map((s) => s.text), ...(r.sourceNotes || [])]) {
+    for (const m of String(t).matchAll(TIN_SIZE)) {
+      const after = TIN_AFTER.exec(t.slice(m.index + m[0].length, m.index + m[0].length + 60));
+      if (!after) continue;
+      const what = after[1].trim().replace(/^-+/, '');
+      if (m[4]) return { weight: +m[4], unit: m[5].toLowerCase(), text: m[0].trim(), what };
+      const sides = m[3] ? [+m[3]] : [+m[1], +m[2]];
+      if (sides.some((n) => n < 5 || n > 60)) continue;
+      return { sides, text: m[0].trim(), what };
+    }
+  }
+  return null;
+}
+
+/** What to do about the tin when the recipe is scaled; '' when it doesn't matter. */
+function tinNote(r) {
+  const f = scaleOf(r);
+  const tin = tinSize(r);
+  const kinds = equipment(r).filter((e) => TIN_KINDS.has(e.kind)).map((e) => e.kind);
+  if (Math.abs(f - 1) < 0.15 || !tin && !kinds.length) return '';
+  const word = tin ? (/dish/i.test(tin.what) ? 'dish' : /tray|sheet/i.test(tin.what) ? 'tray' : 'tin')
+    : kinds[0] === 'baking dish' ? 'dish' : kinds[0] === 'baking tray' ? 'tray' : 'tin';
+  const timing = 'Check it a little early, as times change with the size.';
+  const n = Math.round(f);
+  const several = f >= 1.7 && n < COUNT_WORDS.length ? `, or ${COUNT_WORDS[n]} of the original size` : '';
+  if (!tin) return f > 1
+    ? `Use a bigger ${word}, or two, so it cooks at the same depth. ${timing}`
+    : `Use a smaller ${word} so it cooks at the same depth. ${timing}`;
+  let size;
+  if (tin.weight) {
+    const w = tin.weight * f;
+    size = tin.unit === 'lb' ? `a ${fmtAmount(w)}lb` : w >= 1000 || tin.unit === 'kg' ? `a ${+(tin.unit === 'kg' ? w : w / 1000).toFixed(1)}kg` : `a ${Math.round(w / 50) * 50}g`;
+    size += ` ${esc(tin.what)}`;
+  } else {
+    const k = Math.sqrt(f);
+    const sides = tin.sides.map((x) => Math.round(x * k)).join(' × ');
+    size = `one about ${tin.sides.length === 2 ? `${sides}cm` : /square/i.test(tin.what) ? `${sides}cm square` : `${sides}cm across`}`;
+  }
+  return `The original uses a ${esc(tin.text)} ${esc(tin.what)}. For the same depth, use ${size}${several}. ${timing}`;
+}
+
+function scaleBar(r) {
+  const f = scaleOf(r);
+  const base = baseServings(r);
+  const tin = tinNote(r);
+  const now = base ? scaleText(r.servings, f) : `${fmtAmount(f)} × the recipe`;
+  // "4" or "4-6" serves; "10 slices" makes; "Makes 12" says so itself
+  const label = !base || !/^\s*\d/.test(r.servings) ? '' : /[a-z]/i.test(r.servings) ? 'Makes' : 'Serves';
+  return `
+    <div class="scale-bar">
+      <button type="button" class="step-btn" data-scale="-1" aria-label="Fewer" ${!base && f <= 0.5 ? 'disabled' : ''}>${icon('minus')}</button>
+      <span class="scale-now" aria-live="polite">${label ? `<span>${label}</span> ` : ''}<b>${esc(now)}</b></span>
+      <button type="button" class="step-btn" data-scale="1" aria-label="More">${icon('plus')}</button>
+    </div>
+    <p class="scale-note">${isScaled(r)
+      ? `Scaled from ${base ? esc(r.servings) : 'the original'}. The steps still give the original amounts. <button type="button" class="link" data-scale="reset">Back to the original</button>`
+      : 'Tap an amount to scale everything to it.'}</p>
+    ${tin ? `<p class="scale-note tin-note">${tin}</p>` : ''}`;
+}
+
+/** − / + step by one serving (or by halves of the recipe when it doesn't say how many). */
+function nextScale(r, dir) {
+  const f = scaleOf(r);
+  const base = baseServings(r);
+  if (!base) return Math.max(0.5, (dir > 0 ? Math.floor(f * 2 + 1e-9) + 1 : Math.ceil(f * 2 - 1e-9) - 1) / 2);
+  const n = f * base;
+  const next = dir > 0 ? Math.floor(n + 1e-9) + 1 : Math.ceil(n - 1e-9) - 1;
+  return Math.max(1, next) / base;
+}
+
+/**
+ * Wires the scale controls inside root. rerender redraws whatever shows amounts.
+ * Tapping an amount swaps it for a box; the number typed there sets the scale.
+ */
+function wireScaling(root, r, rerender) {
+  const apply = (f, focus) => {
+    ticks.setScale(r.id, f);
+    rerender();
+    if (focus) root.querySelector(focus)?.focus();
+  };
+  root.addEventListener('click', (e) => {
+    const step = e.target.closest('[data-scale]');
+    if (step) {
+      const v = step.dataset.scale;
+      apply(v === 'reset' ? 1 : nextScale(r, +v), v === 'reset' ? '.scale-bar [data-scale="1"]' : `[data-scale="${v}"]`);
+      return;
+    }
+    const btn = e.target.closest('[data-amount]');
+    if (!btn) return;
+    e.preventDefault();
+    const [gi, ii] = btn.dataset.amount.split('-').map(Number);
+    const item = r.ingredientGroups[gi].items[ii];
+    const base = firstAmount(item.quantity).value;
+    const box = document.createElement('input');
+    box.className = 'amount-box';
+    box.inputMode = 'decimal';
+    box.value = fmtAmount(base * scaleOf(r), item.unit);
+    box.setAttribute('aria-label', `New amount of ${item.name}${item.unit ? ` in ${item.unit}` : ''}`);
+    btn.replaceWith(box);
+    box.focus();
+    box.select();
+    let done = false;
+    const finish = (keep) => {
+      if (done) return;
+      done = true;
+      const v = keep && firstAmount(box.value)?.value;
+      if (v) apply(v / base, `[data-amount="${btn.dataset.amount}"]`);
+      else rerender();
+    };
+    box.onkeydown = (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+      if (ev.key === 'Escape') finish(false);
+    };
+    box.onblur = () => finish(true);
+    box.onclick = (ev) => ev.preventDefault(); // stay out of the tick box's label
+  });
 }
 
 function onTick(r) {
@@ -816,7 +1269,7 @@ function renderRecipe(id) {
   const est = r.timesAreEstimated ? '<abbr title="Estimated, not stated in the original">est.</abbr>' : '';
   const facts = [
     ['Prep', fmtMinutes(r.prepMinutes)], ['Cook', fmtMinutes(r.cookMinutes)],
-    ['Total', fmtMinutes(totalMinutes(r))], ['Serves', r.servings],
+    ['Total', fmtMinutes(totalMinutes(r))], ['Serves', scaleText(r.servings, scaleOf(r))],
   ].filter(([, v]) => v);
   const cookHref = `#/r/${encodeURIComponent(r.id)}/cook`;
 
@@ -828,7 +1281,7 @@ function renderRecipe(id) {
           <h1>${esc(r.title)}</h1>
           ${byline(r)}
           ${r.description ? `<p class="lede">${esc(r.description)}</p>` : ''}
-          ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>` : ''}
+          ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd data-fact="${k}">${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>` : ''}
           ${r.steps.length ? `<a class="button primary cook-start" href="${cookHref}">${icon('pan')} ${started ? `Carry on cooking, step ${Math.min(t.pos, r.steps.length - 1) + 1}` : 'Start cooking'}</a>` : ''}
         </div>
         ${r.photoKind === 'dish' && r.photoFileId ? `<figure class="plate" data-photo="${esc(r.id)}"></figure>` : ''}
@@ -838,7 +1291,7 @@ function renderRecipe(id) {
       <div class="columns">
         <section class="ingredients">
           <h2 class="section-title">Ingredients</h2>
-          ${ingredientList(r)}
+          <div id="scaled">${scaleBar(r)}${ingredientList(r)}</div>
           ${equipment(r).length ? `<h2 class="section-title kit-title">Equipment</h2>
           <ul class="kit-list">${equipment(r).map((e) => `<li>${equipmentIcon(e)}<span>${esc(equipmentName(e))}</span>${e.count > 1 ? `<b>×${e.count}</b>` : ''}</li>`).join('')}</ul>` : ''}
         </section>
@@ -882,6 +1335,13 @@ function renderRecipe(id) {
   app.onclick = null;
   app.onchange = onTick(r);
   renderSteps(r);
+  const scaled = document.getElementById('scaled');
+  wireSwaps(scaled, r);
+  wireScaling(scaled, r, () => {
+    scaled.innerHTML = scaleBar(r) + ingredientList(r);
+    const serves = app.querySelector('[data-fact="Serves"]');
+    if (serves) serves.textContent = scaleText(r.servings, scaleOf(r));
+  });
 
   const tabs = app.querySelectorAll('.seg');
   tabs.forEach((tab) => tab.onclick = () => {
@@ -965,7 +1425,9 @@ async function setupNoteForm(r) {
   const writable = await canWriteNotes();
   if (!form.isConnected) return;
   form.hidden = !writable;
-  document.getElementById('note-readonly').hidden = writable;
+  const readonly = document.getElementById('note-readonly');
+  readonly.hidden = writable;
+  if (!state.token && !DEMO) readonly.innerHTML = '<button class="link" data-signin>Sign in</button> to add notes.';
   form.onsubmit = async (e) => {
     e.preventDefault();
     const box = document.getElementById('note-text');
@@ -1004,7 +1466,7 @@ async function renderNotes(r) {
     <div class="slip">
       <p>${esc(n.text).replace(/\n/g, '<br>')}</p>
       <p class="sig"><span>${esc(n.name || n.email)}, ${new Date(n.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-        ${n.email === state.user.email ? `<button class="link" data-del="${esc(n.id)}">Delete</button>` : ''}</p>
+        ${n.email === state.user?.email ? `<button class="link" data-del="${esc(n.id)}">Delete</button>` : ''}</p>
     </div>`).join('') : '<p class="muted">No notes yet.</p>';
   el.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
     if (!confirm('Delete this note?')) return;
@@ -1093,7 +1555,7 @@ function renderCook(id) {
       <aside class="drawer" id="drawer" aria-label="Ingredients">
         <div class="drawer-head"><h2>Ingredients</h2>
           <button class="icon-button" id="drawer-close" aria-label="Close ingredients">${icon('close')}</button></div>
-        ${ingredientList(r)}
+        <div id="drawer-list">${scaleBar(r)}${ingredientList(r)}</div>
       </aside>
     </section>`;
 
@@ -1103,6 +1565,9 @@ function renderCook(id) {
   const drawer = document.getElementById('drawer');
   const ingsBtn = document.getElementById('ings');
   app.onchange = onTick(r);
+  const drawerList = document.getElementById('drawer-list');
+  wireSwaps(drawerList, r);
+  wireScaling(drawerList, r, () => { drawerList.innerHTML = scaleBar(r) + ingredientList(r); });
 
   function show() {
     const done = pos >= n; // the "that's everything" page after the last step
@@ -1248,6 +1713,14 @@ async function renderFlowchart(r) {
 // ---------- add recipes / status ----------
 
 async function renderInbox() {
+  if (!state.token && !DEMO) {
+    app.innerHTML = `<section class="inbox">
+      <a href="#/" class="back">${icon('back')} All recipes</a>
+      <header class="page-head"><h1>Add recipes</h1>
+        <p class="lede"><button class="link" data-signin>Sign in</button> to add recipes.</p></header>
+    </section>`;
+    return;
+  }
   const folderUrl = `https://drive.google.com/drive/folders/${encodeURIComponent(CFG.inboxFolderId)}`;
   app.innerHTML = `
     <section class="inbox">
@@ -1360,7 +1833,7 @@ async function renderReview() {
 // ---------- routing & startup ----------
 
 function route() {
-  if (!state.user) return;
+  if (!state.user && !state.saved) return;
   leaveCooking();
   const hash = location.hash || '#/';
   window.scrollTo(0, 0);
@@ -1376,6 +1849,7 @@ window.addEventListener('hashchange', route);
 
 async function start() {
   app.innerHTML = '<p class="muted center">Opening the book…</p>';
+  if (!DEMO) { state.saved = null; state.notes = null; banner(''); }
   if (DEMO) {
     state.user = { email: 'demo@example.com', name: 'Demo user' };
   } else {
@@ -1405,14 +1879,49 @@ async function boot() {
     app.innerHTML = '<p class="center">Site not configured yet: fill in <code>docs/config.js</code>. Or try the <a href="?demo">demo</a>.</p>';
     return;
   }
-  await waitForGsi();
-  initTokenClient();
   const saved = loadSavedToken();
+  // Not signed in: open the saved copy straight away, and let Google sign-in load behind it.
+  if (!saved && await openSaved()) {
+    waitForGsi().then(initTokenClient, () => { /* offline; Sign in tries again */ });
+    return;
+  }
+  try {
+    await waitForGsi();
+    initTokenClient();
+  } catch (e) {
+    if (await openSaved()) return; // offline: Google sign-in can't load, but the saved copy can
+    throw e;
+  }
   if (saved) {
     state.token = saved.token;
-    return start();
+    try {
+      return await start();
+    } catch (e) {
+      if (await openSaved()) return; // offline, say: show the saved copy instead
+      throw e;
+    }
   }
   showSignIn();
+}
+
+/** Show this device's saved copy, signed out. False if there isn't one. */
+async function openSaved() {
+  const about = await savedGet('about.json');
+  if (!about) return false;
+  state.token = null;
+  state.user = null;
+  state.saved = await about.json();
+  try {
+    await loadRecipes();
+  } catch {
+    state.saved = null;
+    return false;
+  }
+  setSignedIn(false);
+  const when = new Date(state.saved.savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  banner(`Saved copy from ${when}. <button class="link" data-signin>Sign in</button> for new recipes and notes.`, 'info');
+  route();
+  return true;
 }
 
 boot().catch((e) => {

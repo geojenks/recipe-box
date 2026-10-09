@@ -126,7 +126,7 @@ code { font-size: .9em; background: var(--surface); border: 1px solid var(--rule
 .topbar nav { display: flex; gap: 1.2rem; align-items: center; font-size: .95rem; }
 .topbar nav a, .topbar .link { color: var(--link); font-weight: 800; text-decoration: none; padding: .5rem 0; }
 .topbar nav a:hover, .topbar .link:hover { text-decoration: underline; }
-body.cooking .topbar { display: none; }
+body.cooking .topbar, body.cooking .banner.info { display: none; }
 
 .banner { padding: .6rem 16px; text-align: center; font-size: .9rem; background: var(--surface); border-bottom: 1px solid var(--rule); }
 .banner.warn { background: var(--accent); color: var(--on-accent); border: 0; }
@@ -364,6 +364,62 @@ main:has(> .signin), main:has(> .cook) { max-width: none; padding: 0; }
 .staple .tick > span { color: var(--muted); }
 .staple .tick b { font-weight: 650; }
 
+/* swaps: a small button at the end of an ingredient line opens close equivalents under it */
+.checklist li.has-swaps { position: relative; }
+.checklist li.has-swaps > .tick { padding-right: 2.6rem; }
+.swap-btn {
+  position: absolute; right: -.3rem; top: .3rem; width: 2.3rem; height: 2.3rem; display: grid; place-items: center;
+  border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer;
+}
+.swap-btn:hover { background: color-mix(in oklab, var(--ink) 10%, transparent); color: var(--ink); }
+.swap-btn[aria-expanded="true"] { color: var(--accent); }
+.swap-btn .i { width: 1.15rem; height: 1.15rem; }
+.swaps { background: var(--surface); border-radius: 14px; padding: .55rem .95rem .2rem; margin: .5rem 0 .7rem; font-size: .95rem; }
+.swaps p { margin: 0; }
+/* The drawer is already --surface, so the panel needs an edge there. */
+.drawer .swaps { border: 1px solid var(--rule); }
+.swaps-head { font-size: .8rem; font-weight: 850; color: var(--muted); }
+.swaps ul { list-style: none; margin: 0; padding: 0; }
+.swaps li { padding: .55rem 0; border-bottom: 1px solid var(--rule); }
+.swaps li:last-child { border-bottom: 0; }
+.swap-name { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 .8rem; }
+.swap-name b { font-weight: 850; }
+.swap-amount { font-weight: 850; color: var(--accent-deep); white-space: nowrap; }
+.swaps .likeness { display: flex; align-items: center; gap: .45rem; margin: .1rem 0 .2rem; font-size: .82rem; color: var(--muted); }
+.likeness .dots { display: inline-flex; gap: 3px; }
+.likeness .dots i { width: .5rem; height: .5rem; border-radius: 50%; border: 1.5px solid var(--rule-strong); }
+.likeness.l1 .dots i:nth-child(1), .likeness.l2 .dots i:nth-child(-n+2), .likeness.l3 .dots i { background: var(--have); border-color: var(--have); }
+.swap-note { color: var(--muted); }
+
+/* scaling: a − / + pill for servings, and amounts you can tap to scale everything to them */
+.scale-bar {
+  display: inline-flex; align-items: center; gap: .2rem; padding: 3px;
+  border: 1.5px solid var(--rule-strong); border-radius: 999px; background: var(--surface);
+}
+.step-btn {
+  display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--ink); cursor: pointer;
+}
+.step-btn:hover { background: color-mix(in oklab, var(--ink) 10%, transparent); }
+.step-btn:disabled { opacity: .35; cursor: default; background: transparent; }
+.step-btn .i { width: 1.2rem; height: 1.2rem; }
+.scale-now { min-width: 6.5rem; text-align: center; font-variant-numeric: tabular-nums; }
+.scale-now span { font-size: .84rem; font-weight: 800; color: var(--muted); }
+.scale-now b { font-weight: 850; }
+.scale-note { margin: .45rem 0 .2rem; font-size: .84rem; font-weight: 650; color: var(--muted); line-height: 1.4; }
+.scale-note .link { font-size: inherit; }
+.tin-note { margin-top: .4rem; max-width: 34rem; }
+.amount {
+  font: inherit; font-weight: 850; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline dotted var(--rule-strong); text-decoration-thickness: 2px; text-underline-offset: .22em;
+}
+.amount:hover { text-decoration-color: var(--accent); }
+.staple .amount { font-weight: 650; }
+.amount-box {
+  width: 4.5em; font: inherit; font-weight: 850; padding: .05rem .4rem; margin: -.1rem 0;
+  border: 1.5px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--ink);
+}
+
 .method-tabs { display: flex; align-items: center; gap: .6rem 0; margin: 2.4rem 0 .4rem; flex-wrap: wrap; }
 .seg {
   min-height: 42px; padding: .4rem 1.1rem; border: 1.5px solid var(--rule-strong); background: var(--surface);
@@ -523,10 +579,10 @@ body.cooking { overflow: hidden; }
 .drawer {
   position: absolute; inset: auto 0 0 0; z-index: 2; max-height: 75%; overflow-y: auto;
   background: var(--surface); border-radius: 24px 24px 0 0; box-shadow: 0 -12px 30px -12px rgb(0 0 0 / .35);
-  padding: .4rem clamp(1rem, 5vw, 2.5rem) 1.4rem; transform: translateY(105%); transition: transform .4s var(--ease); visibility: hidden;
+  padding: 0 clamp(1rem, 5vw, 2.5rem) 1.4rem; transform: translateY(105%); transition: transform .4s var(--ease); visibility: hidden;
 }
 .drawer.open { transform: none; visibility: visible; }
-.drawer-head { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); padding: .4rem 0; }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); padding: .8rem 0 .4rem; z-index: 1; }
 .drawer-head h2 { font-size: 1.3rem; }
 .drawer .tick { font-size: 1.15rem; padding: .7rem 0; }
 .drawer .tick input { width: 1.5rem; height: 1.5rem; }
