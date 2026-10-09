@@ -3,11 +3,12 @@
  *
  * Watches a shared Drive folder ("inbox"), sends new or changed recipe files
  * to Claude for extraction, and writes the results to recipes.json in a data
- * subfolder, which the website reads with each user's own Google sign-in.
+ * subfolder. The website reads it through the password-checking web app in Site.gs.
  *
  * Script properties (Project Settings > Script properties):
  *   ANTHROPIC_API_KEY  required
  *   INBOX_FOLDER_ID    required: the shared "Recipe Box" folder
+ *   SITE_PASSWORD      required for the website: the password everyone types
  *   DATA_FOLDER_ID     set by setup()
  *   RECIPES_FILE_ID    set by setup()
  *   SHEET_ID           set by setup()
@@ -109,10 +110,9 @@ function setup() {
   });
   ScriptApp.newTrigger('processInbox').timeBased().everyHours(1).create();
 
-  Logger.log('Setup complete. Paste these into docs/config.js:');
-  Logger.log("  recipesFileId: '" + p.getProperty('RECIPES_FILE_ID') + "',");
-  Logger.log("  sheetId: '" + p.getProperty('SHEET_ID') + "',");
+  Logger.log('Setup complete. Paste this into docs/config.js:');
   Logger.log("  inboxFolderId: '" + inbox.getId() + "',");
+  Logger.log('Then deploy the web app (see Site.gs) and paste its address in as serviceUrl.');
 }
 
 function emptyIndex_() {
@@ -127,6 +127,7 @@ function loadIndex_() {
 function saveIndex_(index) {
   index.updated = new Date().toISOString();
   DriveApp.getFileById(requireProp_('RECIPES_FILE_ID')).setContent(JSON.stringify(index));
+  CacheService.getScriptCache().remove(PHOTO_IDS_KEY); // the site's list of photos it may hand out
 }
 
 /** Hourly trigger entry point. Safe to run by hand from the editor too. */
@@ -251,6 +252,11 @@ async function processInboxLocked_() {
     changed = true;
   });
 
+  try {
+    if (markSiteAdded_(index, inbox)) changed = true;
+  } catch (e) {
+    Logger.log('Could not mark recipes added on the website: ' + (e.message || e));
+  }
   var unchecked = checkRecipes_(index);
   if (changed) saveIndex_(index);
   writeStatus_(index, plan.skipped, pending, held, unchecked);
@@ -520,11 +526,51 @@ function decorateRecipe_(r, i, file) {
   r.id = file.getId() + '-' + i;
   r.sourceFileId = file.getId();
   r.sourceName = file.getName();
-  // Recipes from a web address are saved by the job, so the file says who asked for it.
-  var asked = /^Added by (.+?) from /.exec(file.getDescription() || '');
-  r.addedBy = asked ? asked[1] : owner ? (owner.getName() || owner.getEmail()) : null;
+  // Files added on the website are saved by this script, so the file says who added it.
+  var origin = siteOrigin_(file.getDescription());
+  r.addedBy = origin ? origin.by : owner ? (owner.getName() || owner.getEmail()) : null;
+  if (origin) setSiteOrigin_(r, origin);
   r.addedAt = file.getDateCreated().toISOString();
   return r;
+}
+
+/**
+ * Who added a file on the website, and how: "Added by Sam from https://..." for a
+ * web address, "Added by Sam on the website" for an upload. Null for anything else.
+ */
+function siteOrigin_(description) {
+  var m = /^Added by (.+?) (?:from (\S+)|on the website)/.exec(description || '');
+  return m ? { by: m[1], via: m[2] ? 'link' : 'upload', from: m[2] || null } : null;
+}
+
+function setSiteOrigin_(r, origin) {
+  r.addedBy = origin.by;
+  r.addedVia = origin.via; // the review page lists these, so they can be checked or deleted
+  if (origin.from) r.addedFrom = origin.from; else delete r.addedFrom;
+}
+
+/**
+ * Marks recipes from the two website folders as added on the website, including
+ * ones read before this was recorded. True if anything changed.
+ */
+function markSiteAdded_(index, inbox) {
+  var changed = false;
+  [WEB_FOLDER_NAME, UPLOAD_FOLDER_NAME].forEach(function (name) {
+    var folders = inbox.getFoldersByName(name);
+    if (!folders.hasNext()) return;
+    var files = folders.next().getFiles();
+    while (files.hasNext()) {
+      var f = files.next();
+      var origin = siteOrigin_(f.getDescription());
+      if (!origin) continue;
+      index.recipes.forEach(function (r) {
+        if (r.sourceFileId !== f.getId() || (r.addedVia === origin.via && r.addedBy === origin.by)) return;
+        setSiteOrigin_(r, origin);
+        changed = true;
+      });
+    }
+  });
+  return changed;
 }
 
 function removeRecipesForSource_(index, sourceId) {
@@ -1021,7 +1067,7 @@ function writeStatus_(index, skipped, pending, held, unchecked) {
       var who = 'Added by ' + (r[3] || r[2] || 'someone') + '. ';
       if (!url) return;
       if (!r[5] || r[5] === 'waiting') {
-        links.push([url, 'waiting', '', who + 'Fetched on the next hourly run.' + (r[6] ? ' Last try: ' + r[6] : ''), now]);
+        links.push([url, 'waiting', '', who + 'Fetched on the next run, within the hour.' + (r[6] ? ' Last try: ' + r[6] : ''), now]);
       } else if (new Date(r[1]).getTime() < recent) {
         return;
       } else if (r[5] === 'added') {

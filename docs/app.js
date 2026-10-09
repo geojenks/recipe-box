@@ -1,28 +1,25 @@
-// Recipe book front end. Talks directly to Google Drive and Sheets with the
-// signed-in user's own token, so it only works for people the folder is shared with.
+// Recipe book front end. Everything goes through the web app in apps-script/Site.gs,
+// which checks the shared password and reads and writes Drive and Sheets for the site.
 
 const CFG = { siteTitle: 'Recipe book', ...window.RECIPE_BOX_CONFIG };
 const DEMO = new URLSearchParams(location.search).has('demo');
-const SCOPES = [
-  'openid', 'email', 'profile',
-  'https://www.googleapis.com/auth/drive.readonly',
-  'https://www.googleapis.com/auth/spreadsheets',
-].join(' ');
-const TOKEN_KEY = 'rb-token';
+const ACCESS_KEY = 'rb-access'; // {password, name} on this device
+const DEVICE_KEY = 'rb-device'; // this device's own id, so its notes can be deleted from it
+const NAME_KEY = 'rb-name'; // kept when the password changes, so it needn't be typed again
 const TICKS_KEY = 'rb-ticks';
 const TICKS_TTL = 12 * 3600_000; // ticks older than this belong to a previous cook
+const UPLOAD_MAX = 20 * 1024 * 1024;
 
 const state = {
-  token: null,
-  user: null,
+  user: null,             // {device, name} once the password is in
   recipes: [],
   byId: new Map(),
   ingredients: new Map(), // canonical -> {name, staple, recipeIds:Set}
   mainCounts: null, // ingredient -> how many recipes it is a main ingredient of
-  notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]
-  canNote: null,          // can this user write to the notes sheet?
+  notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]; email holds the device id
   photos: new Map(),      // fileId -> Promise<objectURL|null>
-  saved: null,            // {savedAt} while showing this device's saved copy, signed out
+  saved: null,            // {savedAt, version} while showing this device's saved copy
+  version: null,          // which recipes.json is showing, so an unchanged one isn't downloaded again
   search: { text: '', ingredients: [], missing: [], course: '', showHidden: false },
 };
 const emptySearch = (text = '') => ({ text, ingredients: [], missing: [], course: '', showHidden: false });
@@ -99,46 +96,69 @@ const ticks = (() => {
   };
 })();
 
-// ---------- auth ----------
+// ---------- access: one shared password ----------
 
-let tokenClient = null;
-let tokenWaiters = [];
+let access = null; // {password, name, device} while the password is in
 
-function loadSavedToken() {
+function loadAccess() {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(TOKEN_KEY) || 'null');
-    if (saved && saved.expires > Date.now() + 60_000) return saved;
+    const a = JSON.parse(localStorage.getItem(ACCESS_KEY) || 'null');
+    if (a?.password && a.name) return { ...a, device: deviceId() };
   } catch { /* storage blocked */ }
   return null;
 }
 
-function initTokenClient() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CFG.clientId,
-    scope: SCOPES,
-    callback: (resp) => {
-      const waiters = tokenWaiters;
-      tokenWaiters = [];
-      if (resp.error) { waiters.forEach((w) => w.reject(new Error(resp.error))); return; }
-      state.token = resp.access_token;
-      try {
-        sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ token: resp.access_token, expires: Date.now() + resp.expires_in * 1000 }));
-      } catch { /* fine */ }
-      waiters.forEach((w) => w.resolve());
-    },
-  });
+function setAccess(a) {
+  access = a;
+  state.user = a ? { device: a.device, name: a.name } : null;
+  try {
+    if (a) {
+      localStorage.setItem(ACCESS_KEY, JSON.stringify({ password: a.password, name: a.name }));
+      localStorage.setItem(NAME_KEY, a.name);
+    } else {
+      localStorage.removeItem(ACCESS_KEY);
+    }
+  } catch { /* fine: asked again next time */ }
 }
 
-function requestToken(prompt) {
-  return new Promise((resolve, reject) => {
-    tokenWaiters.push({ resolve, reject });
-    tokenClient.requestAccessToken({ prompt, hint: state.user?.email });
-  });
+function deviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) localStorage.setItem(DEVICE_KEY, id = `device:${crypto.randomUUID()}`);
+    return id;
+  } catch {
+    return `device:${crypto.randomUUID()}`;
+  }
 }
 
-async function waitForGsi() {
-  for (let i = 0; i < 100 && !window.google?.accounts?.oauth2; i++) await new Promise((r) => setTimeout(r, 100));
-  if (!window.google?.accounts?.oauth2) throw new Error('Could not load Google sign-in. Check your connection or ad blocker.');
+/**
+ * One request to the web app. Sent as plain text so the browser sends it without
+ * asking permission first, which Apps Script can't answer. Failures throw an Error
+ * with .status, as the web app reports it (0 if it couldn't be reached).
+ */
+async function call(action, args = {}, a = access) {
+  if (!a) throw Object.assign(new Error('Enter the password to do this.'), { status: 401 });
+  let res;
+  try {
+    res = await fetch(CFG.serviceUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...args, action, password: a.password, device: a.device, name: a.name }),
+    });
+  } catch {
+    throw Object.assign(new Error(navigator.onLine === false ? 'You’re offline.' : 'Could not reach the recipe book.'), { status: 0 });
+  }
+  let body;
+  try {
+    body = await res.json();
+  } catch {
+    body = { error: `The recipe book sent back something unexpected (${res.status}).`, status: res.status || 500 };
+  }
+  if (body.error) {
+    if (body.status === 401 && a === access) passwordChanged();
+    throw Object.assign(new Error(body.error), { status: body.status });
+  }
+  return body;
 }
 
 function setSignedIn(on) {
@@ -146,94 +166,81 @@ function setSignedIn(on) {
   document.querySelector('.topbar nav a').hidden = !on;
 }
 
-/** Sign in from a button. From the saved copy, a cancelled sign-in just leaves you where you were. */
-async function signIn() {
-  try {
-    if (!tokenClient) { await waitForGsi(); initTokenClient(); } // didn't load when the book opened offline
-    await requestToken('');
-    await start();
-  } catch (e) {
-    if (state.saved) {
-      if (e.message !== 'access_denied') banner(`Could not sign in: ${esc(e.message)}`, 'warn');
-      return;
-    }
-    showSignIn(e.message === 'access_denied' ? 'Sign-in was cancelled.' : e.message);
-  }
-}
-document.addEventListener('click', (e) => { if (e.target.closest('[data-signin]')) signIn(); });
-
-function showSignIn(message = '') {
+function showPassword(message = '') {
+  let name = '';
+  try { name = localStorage.getItem(NAME_KEY) || ''; } catch { /* storage blocked */ }
   leaveCooking();
+  banner('');
   setSignedIn(false);
   app.innerHTML = `
     <section class="signin">
-      <div class="signin-card">
+      <form class="signin-card" id="password-form">
         <h1 class="wordmark">${esc(CFG.siteTitle)}</h1>
-        <p>Our shared recipes. Sign in with the Google account the recipe folder is shared with.</p>
-        ${message ? `<p class="error">${esc(message)}</p>` : ''}
-        <button class="button primary" id="signin">Sign in with Google</button>
-      </div>
+        <p>Our shared recipes. Enter the password, and your name to sign any notes you add.</p>
+        <label class="field"><span class="vh">Password</span>${icon('lock')}
+          <input id="pw" type="password" autocomplete="current-password" placeholder="Password" required></label>
+        <label class="field"><span class="vh">Your name</span>${icon('person')}
+          <input id="pw-name" autocomplete="given-name" placeholder="Your name" maxlength="60" value="${esc(name)}" required></label>
+        <p class="error" id="pw-msg" role="alert"${message ? '' : ' hidden'}>${esc(message)}</p>
+        <button class="button primary" type="submit">Open the book</button>
+        ${state.saved ? '<button class="link" type="button" id="pw-back">Back to the saved copy</button>' : ''}
+      </form>
     </section>`;
-  document.getElementById('signin').onclick = signIn;
+  const form = document.getElementById('password-form');
+  const msg = document.getElementById('pw-msg');
+  document.getElementById('pw-back')?.addEventListener('click', showSavedCopy);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const a = { password: form.pw.value.trim(), name: form['pw-name'].value.trim().replace(/\s+/g, ' '), device: deviceId() };
+    if (!a.password || !a.name) return;
+    e.submitter.disabled = true;
+    msg.hidden = true;
+    try {
+      const book = await call('open', { since: state.version }, a);
+      setAccess(a);
+      await start(book);
+    } catch (err) {
+      msg.hidden = false;
+      msg.textContent = err.status === 401 ? 'That isn’t the password.' : err.message;
+      e.submitter.disabled = false;
+    }
+  };
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-signin]')) showPassword(); });
+
+/** The password was changed: this device has to be given the new one. */
+function passwordChanged() {
+  setAccess(null);
+  showPassword('The password has changed. Enter the new one.');
 }
 
 function signOut() {
-  if (state.token && !DEMO) google.accounts.oauth2.revoke(state.token, () => {});
-  try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* fine */ }
-  state.token = null;
-  state.user = null;
-  state.canNote = null;
+  setAccess(null);
+  try { localStorage.removeItem(NAME_KEY); } catch { /* fine */ }
   state.notes = null;
   state.saved = null;
+  state.version = null;
   state.photos.clear();
   forgetSaved(); // signing out also removes the saved copy from this device
   banner('');
-  showSignIn();
+  showPassword();
 }
 document.getElementById('signout').onclick = signOut;
 
-/** fetch() against Google APIs, re-requesting the token once if it has expired. */
-async function gfetch(url, opts = {}, retry = true) {
-  if (!state.token) {
-    const err = new Error('Sign in to do this.');
-    err.status = 401;
-    throw err;
-  }
-  const res = await fetch(url, { ...opts, headers: { ...opts.headers, Authorization: `Bearer ${state.token}` } });
-  if (res.status === 401 && retry) {
-    banner('Your sign-in expired. <button id="reauth" class="link">Continue</button>', 'warn');
-    await new Promise((resolve, reject) => {
-      document.getElementById('reauth').onclick = () => requestToken('').then(resolve, reject);
-    });
-    banner('');
-    return gfetch(url, opts, false);
-  }
-  if (!res.ok) {
-    let detail = '';
-    try { detail = (await res.json()).error?.message || ''; } catch { /* not JSON */ }
-    const err = new Error(`${res.status} ${detail}`.trim());
-    err.status = res.status;
-    throw err;
-  }
-  return res;
-}
-
-// ---------- data: Google APIs (or demo files) ----------
-
-const driveFile = (id) => `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`;
-const driveMeta = (id, fields) => `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true&fields=${encodeURIComponent(fields)}`;
-const sheetsBase = () => `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(CFG.sheetId)}`;
-
-// ---------- saved copy: lets the book open on this device without signing in ----------
+// ---------- saved copy: opens the book on this device straight away, and offline ----------
 
 const SAVED = 'rb-saved';
 const savedKey = (name) => new URL(`saved/${name}`, location.href).href;
 
+/** True if it was saved. */
 async function savedPut(name, body, type = 'application/json') {
-  if (DEMO || !window.caches) return;
+  if (DEMO || !window.caches) return false;
   try {
     await (await caches.open(SAVED)).put(savedKey(name), new Response(body, { headers: { 'Content-Type': type } }));
-  } catch { /* storage full or blocked: the book still works signed in */ }
+    return true;
+  } catch {
+    return false; // storage full or blocked: the book still works online
+  }
 }
 
 async function savedGet(name) {
@@ -245,22 +252,28 @@ async function forgetSaved() {
   try { await caches.delete(SAVED); } catch { /* fine */ }
 }
 
-async function loadRecipes() {
-  let data;
-  if (DEMO) {
-    data = await (await fetch('demo/recipes.json', { cache: 'no-store' })).json();
-  } else if (!state.token) {
-    data = await (await savedGet('recipes.json')).json();
-  } else {
-    const text = await (await gfetch(driveFile(CFG.recipesFileId))).text();
-    data = JSON.parse(text);
-    savedPut('recipes.json', text).then(() => savedPut('about.json', JSON.stringify({ savedAt: new Date().toISOString() })));
-    navigator.storage?.persist?.().catch(() => {});
+/** Uses recipes.json: the one given, the demo one, or this device's saved copy. */
+async function loadRecipes(data) {
+  if (!data) {
+    data = DEMO ? await (await fetch('demo/recipes.json', { cache: 'no-store' })).json()
+      : await (await savedGet('recipes.json')).json();
   }
   state.recipes = data.recipes.slice().sort((a, b) => a.title.localeCompare(b.title));
   state.byId = new Map(state.recipes.map((r) => [r.id, r]));
   buildIngredientIndex();
   if (!swapIndex) await loadSwaps();
+}
+
+/** What the web app's "open" sent: recipes (unless this device already has that version) and notes. */
+async function useBook(book) {
+  const fresh = !!book.index;
+  if (fresh) await loadRecipes(book.index);
+  state.version = book.version;
+  setNotes(book.notes);
+  const kept = fresh ? await savedPut('recipes.json', JSON.stringify(book.index)) : true;
+  if (kept) savedPut('about.json', JSON.stringify({ savedAt: new Date().toISOString(), version: book.version }));
+  navigator.storage?.persist?.().catch(() => {});
+  return fresh;
 }
 
 function buildIngredientIndex() {
@@ -293,16 +306,52 @@ function photoUrl(fileId) {
   return state.photos.get(fileId);
 }
 
-/** A photo from this device's saved copy, or from Drive (then saved). Photo files are never
+/** A photo from this device's saved copy, or from the web app (then saved). Photo files are never
  * changed in place (a new photo gets a new file), so a saved one is always current. */
 async function photoBlob(fileId) {
   const name = `photo/${encodeURIComponent(fileId)}`;
   const saved = await savedGet(name);
   if (saved) return saved.blob();
-  if (!state.token) return null;
-  const blob = await (await gfetch(driveFile(fileId))).blob();
-  savedPut(name, blob, blob.type || 'image/jpeg');
+  if (!access) return null;
+  const blob = await fetchPhoto(fileId);
+  if (blob) savedPut(name, blob, blob.type || 'image/jpeg');
   return blob;
+}
+
+// Photos are asked for a few to a request, and a few requests at a time: the web
+// app only runs so many requests at once, and the recipe grid wants dozens.
+const photoQueue = { waiting: new Map(), timer: null, running: 0 };
+
+function fetchPhoto(id) {
+  return new Promise((resolve, reject) => {
+    const q = photoQueue;
+    if (!q.waiting.has(id)) q.waiting.set(id, []);
+    q.waiting.get(id).push({ resolve, reject });
+    q.timer ??= setTimeout(sendPhotoRequests, 30);
+  });
+}
+
+function sendPhotoRequests() {
+  const q = photoQueue;
+  q.timer = null;
+  while (q.running < 4 && q.waiting.size) {
+    const batch = [...q.waiting].slice(0, 6);
+    batch.forEach(([id]) => q.waiting.delete(id));
+    q.running++;
+    call('photos', { ids: batch.map(([id]) => id) })
+      .then(({ photos }) => batch.forEach(([id, waiters]) => {
+        const blob = photos[id] ? base64Blob(photos[id].data, photos[id].type) : null;
+        waiters.forEach((w) => w.resolve(blob));
+      }), (err) => batch.forEach(([, waiters]) => waiters.forEach((w) => w.reject(err))))
+      .finally(() => { q.running--; sendPhotoRequests(); });
+  }
+}
+
+function base64Blob(data, type) {
+  const bin = atob(data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type });
 }
 
 /** The recipe's picture; when the dish photo sits inside a page picture, cut it out. */
@@ -337,49 +386,34 @@ async function loadNotes() {
     try { state.notes = JSON.parse(localStorage.getItem('rb-demo-notes') || '[]'); } catch { state.notes = []; }
     return;
   }
-  if (!state.token) {
+  if (!access) {
     const saved = await savedGet('notes.json');
     state.notes = saved ? await saved.json() : [];
     return;
   }
-  const res = await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Notes!A2:F')}`);
-  const rows = (await res.json()).values || [];
-  state.notes = rows
-    .map((v, i) => ({ row: i + 2, id: v[0], recipeId: v[1], timestamp: v[2], email: v[3], name: v[4], text: v[5] }))
-    .filter((n) => n.id && n.text);
-  savedPut('notes.json', JSON.stringify(state.notes));
+  setNotes((await call('notes')).notes);
 }
 
-/** Everyone can read the notes sheet, but only editors can add to it. */
+function setNotes(notes) {
+  state.notes = notes;
+  savedPut('notes.json', JSON.stringify(notes));
+}
+
+/** Anyone with the password can add notes and recipes; the saved copy alone is read-only. */
 async function canWriteNotes() {
-  if (DEMO) return true;
-  if (!state.token) return false;
-  if (state.canNote == null) {
-    try {
-      state.canNote = !!(await (await gfetch(driveMeta(CFG.sheetId, 'capabilities(canEdit)'))).json()).capabilities?.canEdit;
-    } catch {
-      return true; // can't tell; let them try, and a refused save says why
-    }
-  }
-  return state.canNote;
+  return DEMO || !!access;
 }
 
 async function addNote(recipeId, text) {
-  const note = {
-    id: crypto.randomUUID(), recipeId, timestamp: new Date().toISOString(),
-    email: state.user.email, name: state.user.name, text,
-  };
   if (DEMO) {
-    state.notes.push({ ...note, row: state.notes.length + 2 });
+    state.notes.push({
+      id: crypto.randomUUID(), recipeId, timestamp: new Date().toISOString(),
+      email: state.user.device, name: state.user.name, text, row: state.notes.length + 2,
+    });
     localStorage.setItem('rb-demo-notes', JSON.stringify(state.notes));
     return;
   }
-  await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Notes!A:F')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ values: [[note.id, note.recipeId, note.timestamp, note.email, note.name, note.text]] }),
-  });
-  await loadNotes();
+  setNotes((await call('addNote', { recipeId, text })).notes);
 }
 
 async function deleteNote(note) {
@@ -388,47 +422,46 @@ async function deleteNote(note) {
     localStorage.setItem('rb-demo-notes', JSON.stringify(state.notes));
     return;
   }
-  // Rows are only ever appended or blanked, never removed, so row numbers are stable.
-  // Still, check the row holds this note before clearing it.
-  const range = encodeURIComponent(`Notes!A${note.row}:F${note.row}`);
-  const current = (await (await gfetch(`${sheetsBase()}/values/${range}`)).json()).values?.[0];
-  if (current?.[0] === note.id) await gfetch(`${sheetsBase()}/values/${range}:clear`, { method: 'POST' });
-  await loadNotes();
+  setNotes((await call('deleteNote', { id: note.id })).notes);
 }
 
 async function loadStatus() {
   if (DEMO) {
     return [['example.pdf', 'ok', '1', '', new Date().toISOString()],
-      ...demoLinks().map((url) => [url, 'waiting', '', `Added by ${state.user?.name || 'you'}. Fetched on the next hourly run.`])];
+      ...demoAdded().reverse().map((x) => (/^https?:/.test(x)
+        ? [x, 'waiting', '', `Added by ${state.user.name}. Fetched in the next few minutes.`]
+        : [x, 'waiting', '', `Uploaded by ${state.user.name}. Read by Claude in the next few minutes.`]))];
   }
-  const res = await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Status!A2:E')}`);
-  return (await res.json()).values || [];
+  return (await call('status')).rows;
 }
 
-const demoLinks = () => { try { return JSON.parse(localStorage.getItem('rb-demo-links') || '[]'); } catch { return []; } };
+// In the demo, web addresses and uploads are only listed in this browser.
+const demoAdded = () => { try { return JSON.parse(localStorage.getItem('rb-demo-links') || '[]'); } catch { return []; } };
+const demoAdd = (x) => localStorage.setItem('rb-demo-links', JSON.stringify([...demoAdded(), x]));
 
-/** Asks the background job to fetch a recipe from a web address, via the Links tab of the notes sheet. */
+/** Asks the background job to fetch a recipe from a web address. */
 async function addLink(url) {
-  if (DEMO) {
-    localStorage.setItem('rb-demo-links', JSON.stringify([...demoLinks(), url]));
-    return;
-  }
-  await gfetch(`${sheetsBase()}/values/${encodeURIComponent('Links!A:E')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ values: [[crypto.randomUUID(), new Date().toISOString(), state.user.email, state.user.name, url]] }),
-  });
+  if (DEMO) return demoAdd(url);
+  await call('link', { url });
 }
 
-/** Can this user upload to the recipe folder, and who owns it? */
-async function inboxAccess() {
-  if (DEMO) return { canAdd: true, owners: [] };
-  try {
-    const f = await (await gfetch(driveMeta(CFG.inboxFolderId, 'capabilities(canAddChildren),owners(displayName)'))).json();
-    return { canAdd: !!f.capabilities?.canAddChildren, owners: (f.owners || []).map((o) => o.displayName).filter(Boolean) };
-  } catch {
-    return { canAdd: true, owners: [] };
+/** Uploads a recipe file, and optionally a photo of the dish. Returns the name it was saved under. */
+async function uploadRecipe(recipe, photo) {
+  if (DEMO) {
+    demoAdd(recipe.name);
+    return recipe.name;
   }
+  const part = async (file) => file && { name: file.name, data: await base64Of(file) };
+  return (await call('upload', { recipe: await part(recipe), photo: await part(photo) })).file;
+}
+
+function base64Of(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 // ---------- search ----------
@@ -1339,12 +1372,12 @@ function renderRecipe(id) {
           <textarea id="note-text" rows="3" placeholder="Add a note for everyone: tweaks, what worked, what to try next time" required></textarea>
           <button class="button" type="submit">Add note</button>
         </form>
-        <p id="note-readonly" class="readonly-note" hidden>You can read notes but not add them. To add notes, ask whoever owns the shared recipe folder for edit access to the notes sheet.</p>
+        <p id="note-readonly" class="readonly-note" hidden><button class="link" data-signin>Enter the password</button> to add notes.</p>
       </section>
 
       <footer class="colophon">
         ${!r.author && !r.book && r.sourceCredit ? `<span>Source: ${esc(r.sourceCredit)}</span>` : ''}
-        <span>Added${r.addedBy ? ` by ${esc(r.addedBy)}` : ''} on ${new Date(r.addedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span>Added${r.addedBy ? ` by ${esc(r.addedBy)}` : ''}${r.addedFrom ? ` from <a href="${esc(r.addedFrom)}" target="_blank" rel="noopener">${esc(siteName(r.addedFrom))}</a>` : ''} on ${new Date(r.addedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
         ${r.sourceFileId && !DEMO ? `<a href="https://drive.google.com/file/d/${encodeURIComponent(r.sourceFileId)}/view" target="_blank" rel="noopener">${icon('file')} Original file</a>` : ''}
       </footer>
     </article>`;
@@ -1445,7 +1478,6 @@ async function setupNoteForm(r) {
   form.hidden = !writable;
   const readonly = document.getElementById('note-readonly');
   readonly.hidden = writable;
-  if (!state.token && !DEMO) readonly.innerHTML = '<button class="link" data-signin>Sign in</button> to add notes.';
   form.onsubmit = async (e) => {
     e.preventDefault();
     const box = document.getElementById('note-text');
@@ -1457,13 +1489,7 @@ async function setupNoteForm(r) {
       box.value = '';
       renderNotes(r);
     } catch (err) {
-      if (err.status === 403) {
-        state.canNote = false;
-        form.hidden = true;
-        document.getElementById('note-readonly').hidden = false;
-      } else {
-        alert(`Could not save the note: ${err.message}`);
-      }
+      if (err.status !== 401) alert(`Could not save the note: ${err.message}`);
     } finally {
       e.submitter.disabled = false;
     }
@@ -1484,7 +1510,7 @@ async function renderNotes(r) {
     <div class="slip">
       <p>${esc(n.text).replace(/\n/g, '<br>')}</p>
       <p class="sig"><span>${esc(n.name || n.email)}, ${new Date(n.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-        ${n.email === state.user?.email ? `<button class="link" data-del="${esc(n.id)}">Delete</button>` : ''}</p>
+        ${n.email === state.user?.device ? `<button class="link" data-del="${esc(n.id)}">Delete</button>` : ''}</p>
     </div>`).join('') : '<p class="muted">No notes yet.</p>';
   el.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
     if (!confirm('Delete this note?')) return;
@@ -1731,11 +1757,11 @@ async function renderFlowchart(r) {
 // ---------- add recipes / status ----------
 
 async function renderInbox() {
-  if (!state.token && !DEMO) {
+  if (!access && !DEMO) {
     app.innerHTML = `<section class="inbox">
       <a href="#/" class="back">${icon('back')} All recipes</a>
       <header class="page-head"><h1>Add recipes</h1>
-        <p class="lede"><button class="link" data-signin>Sign in</button> to add recipes.</p></header>
+        <p class="lede"><button class="link" data-signin>Enter the password</button> to add recipes.</p></header>
     </section>`;
     return;
   }
@@ -1744,7 +1770,7 @@ async function renderInbox() {
     <section class="inbox">
       <a href="#/" class="back">${icon('back')} All recipes</a>
       <header class="page-head"><h1>Add recipes</h1>
-        <p class="lede">Add a recipe from a web address, or put a file in the shared recipe folder in Google Drive. New recipes appear here within the hour.</p></header>
+        <p class="lede">Add a recipe from a web address or a file. Claude reads it and it appears here within a few minutes.</p></header>
       <h2 class="section-title">From a web address</h2>
       <form id="link-form" class="link-form">
         <label class="field"><span class="vh">Web address of a recipe</span>${icon('link')}
@@ -1752,15 +1778,24 @@ async function renderInbox() {
         <button class="button primary" type="submit">Add</button>
       </form>
       <p id="link-msg" class="link-msg" role="status" hidden></p>
-      <p class="link-help">The page is fetched on the next hourly run, with its photo. If a website won't let it be read, or it needs a sign-in, save the page as a PDF and upload that instead.</p>
-      <div id="access" class="access"></div>
+      <p class="link-help">The page's recipe and photo are fetched. If a website won't let it be read, or it needs a sign-in, save the page as a PDF and upload that instead.</p>
       <h2 class="section-title">From a file</h2>
-      <ol>
-        <li>Open the <a href="${folderUrl}" target="_blank" rel="noopener">shared recipe folder in Google Drive</a>.</li>
-        <li>Upload a PDF, a photo of a recipe (cookbook page, handwritten card), a Google Doc, a Word file or a text file. Subfolders are fine.</li>
-        <li>Want a nice photo of the finished dish? Upload it with the <b>same name</b> as the recipe file, for example <code>Lasagne.pdf</code> and <code>Lasagne.jpg</code>.</li>
-        <li>New files are picked up within the hour. To fix a recipe, edit or replace the file; delete it to remove the recipe.</li>
-      </ol>
+      <form id="upload-form" class="upload-form">
+        <label class="file-pick"><span class="file-label">Recipe</span>
+          <span class="file-hint">A PDF, a photo of a cookbook page or card, a Word file or a text file.</span>
+          <input id="up-recipe" type="file" required
+            accept=".pdf,.docx,.txt,.md,.html,.htm,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,application/pdf,image/*"></label>
+        <label class="file-pick"><span class="file-label">Photo of the finished dish <small>optional</small></span>
+          <span class="file-hint">Shown with the recipe. Not needed with a photo of a cookbook page: the dish photo is found on the page.</span>
+          <input id="up-photo" type="file" accept="image/*,.heic,.heif"></label>
+        <button class="button primary" type="submit">Upload</button>
+      </form>
+      <p id="upload-msg" class="link-msg" role="status" hidden></p>
+      <p class="link-help">Up to 20 MB.</p>
+      <h2 class="section-title">In Google Drive</h2>
+      <p class="drive-note">If the <a href="${folderUrl}" target="_blank" rel="noopener">shared recipe folder</a> is shared with you, you can put files straight into it.
+        A photo with the <b>same name</b> as a recipe file goes with it, for example <code>Lasagne.pdf</code> and <code>Lasagne.jpg</code>.
+        To fix a recipe there, edit or replace its file; delete the file to remove the recipe.</p>
       <h2 class="section-title">Checking the conversions</h2>
       <p>After converting a recipe, Claude reads it again for steps that may have come out wrong, and lists the equipment it needs.
         <a href="#/review">See which recipes to check against the original</a>.</p>
@@ -1771,14 +1806,7 @@ async function renderInbox() {
   app.onchange = null;
 
   setupLinkForm();
-  inboxAccess().then(({ canAdd, owners }) => {
-    const el = document.getElementById('access');
-    if (!el || canAdd) return;
-    const who = owners.length ? esc(owners.join(' or ')) : 'whoever shares the recipe folder with you';
-    el.innerHTML = `<div class="slip"><p><b>Your account can read the recipe folder but not add files to it.</b></p>
-      <p>To add files, ask ${who} to make you an editor of the folder.</p></div>`;
-  });
-
+  setupUploadForm();
   showStatus();
 }
 
@@ -1797,17 +1825,14 @@ async function showStatus() {
   }
 }
 
-async function setupLinkForm() {
+function formMessage(id) {
+  const msg = document.getElementById(id);
+  return (html, bad) => { msg.hidden = false; msg.className = `link-msg${bad ? ' error' : ''}`; msg.innerHTML = html; };
+}
+
+function setupLinkForm() {
   const form = document.getElementById('link-form');
-  const msg = document.getElementById('link-msg');
-  const say = (html, bad) => { msg.hidden = false; msg.className = `link-msg${bad ? ' error' : ''}`; msg.innerHTML = html; };
-  const writable = await canWriteNotes();
-  if (!form.isConnected) return;
-  if (!writable) {
-    form.hidden = true;
-    say('Your account can read the recipe book but not add web addresses. Ask whoever owns the shared recipe folder for edit access to the notes sheet.');
-    return;
-  }
+  const say = formMessage('link-msg');
   form.onsubmit = async (e) => {
     e.preventDefault();
     const box = document.getElementById('link-url');
@@ -1817,22 +1842,49 @@ async function setupLinkForm() {
     try {
       await addLink(url);
       box.value = '';
-      say('Added. It’ll be fetched on the next hourly run, then appear in the book. Progress shows under Processing status below.');
+      say('Added. It’s fetched in the next few minutes, then appears in the book.');
       showStatus();
     } catch (err) {
-      if (/Unable to parse range/i.test(err.message)) {
-        say('The background job hasn’t been updated for web addresses yet. Whoever runs it needs to paste in the new Code.gs and run it once.', true);
-      } else if (err.status === 403) {
-        state.canNote = false;
-        form.hidden = true;
-        say('Your account can’t add web addresses. Ask whoever owns the shared recipe folder for edit access to the notes sheet.', true);
-      } else {
-        say(`Could not add it: ${esc(err.message)}`, true);
-      }
+      if (err.status !== 401) say(`Could not add it: ${esc(err.message)}`, true);
     } finally {
       e.submitter.disabled = false;
     }
   };
+}
+
+const IMAGE_NAME = /\.(jpe?g|png|webp|gif|heic|heif)$/i;
+
+function setupUploadForm() {
+  const form = document.getElementById('upload-form');
+  const say = formMessage('upload-msg');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const recipe = form['up-recipe'].files[0];
+    const photo = form['up-photo'].files[0] || null;
+    if (!recipe) return;
+    if (photo && IMAGE_NAME.test(recipe.name)) {
+      return say('A photo of the dish can go with a PDF, Word or text file. For a photo of a cookbook page, upload just that: the dish photo is found on the page.', true);
+    }
+    if (photo && !IMAGE_NAME.test(photo.name)) return say('The dish photo should be a picture: JPEG, PNG, WebP, GIF or HEIC.', true);
+    if (recipe.size + (photo?.size || 0) > UPLOAD_MAX) return say('That’s too big. Files can be up to 20 MB in all.', true);
+    e.submitter.disabled = true;
+    say('Uploading…');
+    try {
+      const name = await uploadRecipe(recipe, photo);
+      form.reset();
+      say(`Uploaded as “${esc(name)}”. Claude reads it in the next few minutes, then it appears in the book.`);
+      showStatus();
+    } catch (err) {
+      if (err.status !== 401) say(`Could not upload it: ${esc(err.message)}`, true);
+    } finally {
+      e.submitter.disabled = false;
+    }
+  };
+}
+
+/** "https://www.bbcgoodfood.com/recipes/x" -> "bbcgoodfood.com" */
+function siteName(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
 }
 
 /**
@@ -1853,6 +1905,10 @@ async function renderReview() {
   const clear = read.filter((x) => !(x.r.unclear || []).length).sort(byComplexity);
   const notYet = rows.filter((x) => !hasCheck(x.r) && !x.done).sort(byComplexity);
   const done = rows.filter((x) => x.done).sort((a, b) => b.done.timestamp.localeCompare(a.done.timestamp));
+  // Added on this site rather than in Drive: one entry per file, newest first.
+  const files = new Map();
+  for (const r of state.recipes) if (r.addedVia && !files.has(r.sourceFileId || r.id)) files.set(r.sourceFileId || r.id, r);
+  const onSite = [...files.values()].sort((a, b) => String(b.addedAt).localeCompare(String(a.addedAt)));
 
   const others = new Map();
   for (const r of state.recipes) {
@@ -1881,6 +1937,13 @@ async function renderReview() {
       <a href="#/inbox" class="back">${icon('back')} Add recipes</a>
       <header class="page-head"><h1>Recipes to check</h1>
         <p class="lede">Claude reread each converted recipe for steps that could send a cook wrong, and scored how sure it is that the steps and flowchart match the original. The least certain come first, then the most complex. Open one, compare it with the original file, and mark it as checked.</p></header>
+      ${onSite.length ? `<h2 class="section-title">Added on this website</h2>
+        <p class="muted">Recipes added here rather than in the shared Drive folder, newest first. To remove one, delete its file in Drive.</p>
+        <ul class="review-done site-added">${onSite.map((r) => `<li><a href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>
+          <span class="muted">${esc(r.addedBy || 'Someone')}, ${new Date(r.addedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })},
+          ${r.addedVia === 'link' && r.addedFrom ? `from <a href="${esc(r.addedFrom)}" target="_blank" rel="noopener">${esc(siteName(r.addedFrom))}</a>` : 'uploaded'}${
+          DEMO || !r.sourceFileId ? '' : ` · <a href="https://drive.google.com/file/d/${encodeURIComponent(r.sourceFileId)}/view" target="_blank" rel="noopener">file in Drive</a>`}</span></li>`).join('')}</ul>
+        <h2 class="section-title">Checking the conversions</h2>` : ''}
       <p class="review-count">${[`${toCheck.length} with something unclear`, clear.length && `${clear.length} with nothing unclear`,
         notYet.length && `${notYet.length} not read by Claude yet`, done.length && `${done.length} checked against the original`].filter(Boolean).join(', ')}.</p>
       ${toCheck.length ? `<ol class="review-list">${toCheck.map(row).join('')}</ol>` : ''}
@@ -1916,26 +1979,21 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
-async function start() {
-  app.innerHTML = '<p class="muted center">Opening the book…</p>';
-  if (!DEMO) { state.saved = null; state.notes = null; banner(''); }
+/** Shows the book. `book` is what the web app's "open" sent, if it has already been asked. */
+async function start(book) {
   if (DEMO) {
-    state.user = { email: 'demo@example.com', name: 'Demo user' };
+    state.user = { device: 'device:demo', name: 'Demo user' };
+    await loadRecipes();
   } else {
-    const info = await (await gfetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();
-    state.user = { email: info.email, name: info.given_name || info.name || info.email };
+    if (!book) {
+      app.innerHTML = '<p class="muted center">Opening the book…</p>';
+      book = await call('open', { since: state.version });
+    }
+    await useBook(book);
+    state.saved = null;
+    banner('');
   }
   setSignedIn(true);
-  try {
-    await loadRecipes();
-  } catch (e) {
-    if (e.status === 404 || e.status === 403) {
-      showSignIn(`Signed in as ${state.user.email}, but that account can't see the recipe folder. Ask for it to be shared with you, or sign in with a different account.`);
-      state.user = null;
-      return;
-    }
-    throw e;
-  }
   route();
 }
 
@@ -1944,54 +2002,62 @@ async function boot() {
     banner('Demo mode: showing sample data, notes are saved only in this browser.', 'info');
     return start();
   }
-  if (CFG.clientId.startsWith('PASTE')) {
+  if (!CFG.serviceUrl || CFG.serviceUrl.startsWith('PASTE')) {
     app.innerHTML = '<p class="center">Site not configured yet: fill in <code>docs/config.js</code>. Or try the <a href="?demo">demo</a>.</p>';
     return;
   }
-  const saved = loadSavedToken();
-  // Not signed in: open the saved copy straight away, and let Google sign-in load behind it.
-  if (!saved && await openSaved()) {
-    waitForGsi().then(initTokenClient, () => { /* offline; Sign in tries again */ });
-    return;
+  setAccess(loadAccess());
+  // This device's saved copy opens straight away; the latest is fetched behind it.
+  const opened = await openSaved();
+  if (!access) {
+    return opened ? showSavedCopy() : showPassword();
   }
-  try {
-    await waitForGsi();
-    initTokenClient();
-  } catch (e) {
-    if (await openSaved()) return; // offline: Google sign-in can't load, but the saved copy can
-    throw e;
-  }
-  if (saved) {
-    state.token = saved.token;
-    try {
-      return await start();
-    } catch (e) {
-      if (await openSaved()) return; // offline, say: show the saved copy instead
-      throw e;
-    }
-  }
-  showSignIn();
+  if (!opened) return start();
+  setSignedIn(true);
+  route();
+  refresh();
 }
 
-/** Show this device's saved copy, signed out. False if there isn't one. */
+/** Brings the saved copy up to date. New recipes show at once on an untouched home page; otherwise on request. */
+async function refresh() {
+  try {
+    const fresh = await useBook(await call('open', { since: state.version }));
+    state.saved = null;
+    if (!fresh || !access) return;
+    const home = (location.hash || '#/') === '#/';
+    if (home && window.scrollY < 40 && !state.search.text && !state.search.ingredients.length) return route();
+    banner('There are new recipes. <button class="link" id="show-new">Show them</button>', 'info');
+    document.getElementById('show-new').onclick = () => { banner(''); route(); };
+  } catch (err) {
+    if (err.status !== 401 && state.saved) banner(`Showing the copy saved on this device on ${savedWhen()}. ${esc(err.message)}`, 'warn');
+  }
+}
+
+/** Loads this device's saved copy. False if there isn't one. */
 async function openSaved() {
   const about = await savedGet('about.json');
   if (!about) return false;
-  state.token = null;
-  state.user = null;
-  state.saved = await about.json();
   try {
+    const saved = await about.json();
     await loadRecipes();
+    state.saved = saved;
+    state.version = saved.version || null;
+    const notes = await savedGet('notes.json'); // the latest come with the refresh
+    state.notes = notes ? await notes.json() : null;
+    return true;
   } catch {
-    state.saved = null;
     return false;
   }
-  setSignedIn(false);
-  const when = new Date(state.saved.savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  banner(`Saved copy from ${when}. <button class="link" data-signin>Sign in</button> for new recipes and notes.`, 'info');
-  route();
-  return true;
 }
+
+/** This device's saved copy, read-only, without the password. */
+function showSavedCopy() {
+  setSignedIn(false);
+  banner(`Saved copy from ${savedWhen()}. <button class="link" data-signin>Enter the password</button> for new recipes and notes.`, 'info');
+  route();
+}
+
+const savedWhen = () => new Date(state.saved.savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
 boot().catch((e) => {
   app.innerHTML = `<p class="error center">Something went wrong: ${esc(e.message)}</p>`;

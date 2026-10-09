@@ -1,12 +1,10 @@
-// Site settings. None of these are secrets: access is controlled by who the
-// Drive folder is shared with and who is a test user on the Google Cloud app.
+// Site settings. None of these are secrets: the web app checks the shared
+// password (script property SITE_PASSWORD) before it does anything.
 window.RECIPE_BOX_CONFIG = {
-  // Google Cloud > APIs & Services > Credentials > OAuth client ID (Web application)
-  clientId: '265100605111-vpc1mbo7mub2n90gh5vvenv63ta88gru.apps.googleusercontent.com',
+  // Apps Script > Deploy > Manage deployments: the web app's address, ending /exec
+  serviceUrl: 'https://script.google.com/macros/s/AKfycbx8ycD7dTkO45JwXzWaHXQErmfsd0uxPp4CbIUK_DPUHSszsQ3KAdUoJ_B8OhAU87eenA/exec',
 
-  // Logged by setup() in the Apps Script editor
-  recipesFileId: '1u24tIFe4KCuOS2bSrVDM_GzAxIoXInHI',
-  sheetId: '19l3vRnuUOrk26eTK5o6oK1zT_Qv8EqaSx7kBWwNa-bQ',
+  // Logged by setup() in the Apps Script editor. Only used to link to the shared folder.
   inboxFolderId: '1FEMxVWTEWwPbIES0WJt8hWfstPYPD-0w',
 
   // Always treated as staples (left out of "goes well with" suggestions),
