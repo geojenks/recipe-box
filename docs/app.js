@@ -18,6 +18,9 @@ const state = {
   mainCounts: null, // ingredient -> how many recipes it is a main ingredient of
   notes: null,            // [{row, id, recipeId, timestamp, email, name, text}]; email holds the device id
   photos: new Map(),      // fileId -> Promise<objectURL|null>
+  addedPhotos: [],        // photos people added on the site: [{id, recipeId, timestamp, name, fileId}], oldest first
+  reports: [],            // problems reported on the site: [{id, recipeId, timestamp, name, text, status, detail, decision, decidedBy, decidedAt}]
+  fixes: {},              // recipe id -> Claude's change after a report, from recipes.json
   saved: null,            // {savedAt, version} while showing this device's saved copy
   version: null,          // which recipes.json is showing, so an unchanged one isn't downloaded again
   search: { text: '', ingredients: [], missing: [], course: '', showHidden: false },
@@ -218,6 +221,8 @@ function signOut() {
   setAccess(null);
   try { localStorage.removeItem(NAME_KEY); } catch { /* fine */ }
   state.notes = null;
+  state.addedPhotos = [];
+  state.reports = [];
   state.saved = null;
   state.version = null;
   state.photos.clear();
@@ -260,16 +265,19 @@ async function loadRecipes(data) {
   }
   state.recipes = data.recipes.slice().sort((a, b) => a.title.localeCompare(b.title));
   state.byId = new Map(state.recipes.map((r) => [r.id, r]));
+  state.fixes = data.fixes || {};
+  applyUndos();
   buildIngredientIndex();
   if (!swapIndex) await loadSwaps();
 }
 
-/** What the web app's "open" sent: recipes (unless this device already has that version) and notes. */
+/** What the web app's "open" sent: recipes (unless this device already has that version), notes, added photos and reports. */
 async function useBook(book) {
   const fresh = !!book.index;
   if (fresh) await loadRecipes(book.index);
   state.version = book.version;
   setNotes(book.notes);
+  state.undoneMeanwhile = setExtras({ photos: book.photos || [], reports: book.reports || [] });
   const kept = fresh ? await savedPut('recipes.json', JSON.stringify(book.index)) : true;
   if (kept) savedPut('about.json', JSON.stringify({ savedAt: new Date().toISOString(), version: book.version }));
   navigator.storage?.persist?.().catch(() => {});
@@ -300,7 +308,7 @@ const forget = (key) => { state.photos.delete(key); return null; };
 function photoUrl(fileId) {
   if (!fileId) return Promise.resolve(null);
   if (!state.photos.has(fileId)) {
-    state.photos.set(fileId, (DEMO ? Promise.resolve(`demo/${fileId}`) :
+    state.photos.set(fileId, (DEMO ? Promise.resolve(fileId.startsWith('data:') ? fileId : `demo/${fileId}`) :
       photoBlob(fileId).then((b) => (b ? URL.createObjectURL(b) : forget(fileId)))).catch(() => forget(fileId)));
   }
   return state.photos.get(fileId);
@@ -456,12 +464,255 @@ async function uploadRecipe(recipe, photo) {
 }
 
 function base64Of(file) {
+  return dataUrlOf(file).then((url) => url.split(',')[1] || '');
+}
+
+function dataUrlOf(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+// ---------- added photos and reported problems ----------
+
+/** Keeps the added photos and reports, on this device too (in the demo, in this browser only). True if an undo changed a recipe. */
+function setExtras({ photos = state.addedPhotos, reports = state.reports }) {
+  state.addedPhotos = photos;
+  state.reports = reports;
+  if (DEMO) {
+    try {
+      localStorage.setItem('rb-demo-photos', JSON.stringify(photos));
+      localStorage.setItem('rb-demo-reports', JSON.stringify(reports));
+    } catch {
+      toast('This browser has no room to keep more of the demo’s photos.');
+    }
+  } else {
+    savedPut('extras.json', JSON.stringify({ photos, reports }));
+  }
+  const undone = applyUndos();
+  if (undone) buildIngredientIndex();
+  return undone;
+}
+
+function loadDemoExtras() {
+  const get = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } };
+  setExtras({ photos: get('rb-demo-photos', []), reports: get('rb-demo-reports', DEMO_REPORTS) });
+}
+
+// The demo's sample recipes.json has one change by Claude; this is the report behind it.
+const DEMO_REPORTS = [{
+  id: 'demo-report-1', recipeId: 'demo-1', timestamp: '2026-09-21T18:00:00Z', name: 'Demo user',
+  text: 'Step 3 should say 15 minutes, not 10. The book says to simmer until thick.', status: 'changed',
+  detail: 'Step 3 now simmers for 15 minutes, as the original says.', decision: '', decidedBy: '', decidedAt: '',
+}];
+
+const addedPhotosFor = (r) => state.addedPhotos.filter((p) => p.recipeId === r.id);
+
+/** The picture to show for a recipe: the dish photo in the original, else the first photo added, else the page. */
+function mainImage(r) {
+  if (r.photoFileId && r.photoKind === 'dish') return { kind: 'dish', url: () => recipePhotoUrl(r) };
+  const added = addedPhotosFor(r)[0];
+  if (added) return { kind: 'added', url: () => photoUrl(added.fileId) };
+  if (r.photoFileId) return { kind: r.photoKind, url: () => recipePhotoUrl(r) };
+  return null;
+}
+
+/** A picture made ready to send: a JPEG at most `max` pixels across, the right way up. */
+async function shrinkPhoto(file, max = DEMO ? 800 : 1600) {
+  let source;
+  try {
+    source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch { // some browsers open some pictures (HEIC on an iPhone, say) only this way
+    source = await new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error(`“${file.name}” can’t be opened as a picture on this device. Try a JPEG or PNG.`));
+      };
+      img.src = url;
+    });
+  }
+  const w = source.naturalWidth || source.width, h = source.naturalHeight || source.height;
+  const f = Math.min(1, max / Math.max(w, h));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * f));
+  canvas.height = Math.max(1, Math.round(h * f));
+  canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+  source.close?.();
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b)
+    : reject(new Error(`Could not make “${file.name}” smaller to send.`))), 'image/jpeg', 0.85));
+}
+
+async function addPhoto(r, file) {
+  const blob = await shrinkPhoto(file);
+  if (DEMO) {
+    const photo = { id: crypto.randomUUID(), recipeId: r.id, timestamp: new Date().toISOString(), name: state.user.name, fileId: await dataUrlOf(blob) };
+    return setExtras({ photos: [...state.addedPhotos, photo] });
+  }
+  const { id, photos } = await call('addPhoto', { recipeId: r.id, photo: { name: 'photo.jpg', data: await base64Of(blob) } });
+  const added = photos.find((p) => p.id === id);
+  if (added) { // no need to download what was just sent
+    state.photos.set(added.fileId, Promise.resolve(URL.createObjectURL(blob)));
+    savedPut(`photo/${encodeURIComponent(added.fileId)}`, blob, 'image/jpeg');
+  }
+  setExtras({ photos });
+}
+
+async function removePhoto(id) {
+  if (DEMO) return setExtras({ photos: state.addedPhotos.filter((p) => p.id !== id) });
+  setExtras({ photos: (await call('removePhoto', { id })).photos });
+}
+
+async function sendReport(r, text) {
+  if (DEMO) {
+    return setExtras({ reports: [...state.reports, {
+      id: crypto.randomUUID(), recipeId: r.id, timestamp: new Date().toISOString(), name: state.user.name, text,
+      status: 'waiting', detail: '', decision: '', decidedBy: '', decidedAt: '',
+    }] });
+  }
+  setExtras({ reports: (await call('report', { recipeId: r.id, text })).reports });
+}
+
+/** decision is keep or undo (Claude's change), or dismiss (a report Claude made no change for). */
+async function decide(reportId, decision) {
+  if (DEMO) {
+    return setExtras({ reports: state.reports.map((x) => (x.id === reportId
+      ? { ...x, decision, decidedBy: state.user.name, decidedAt: new Date().toISOString() } : x)) });
+  }
+  setExtras({ reports: (await call('decideFix', { id: reportId, decision })).reports });
+}
+
+/**
+ * Claude's change to a recipe after a report: {fix, decision, by}, decision being the
+ * latest keep or undo since the change (an older one was about an earlier change).
+ * The hourly job carries the decision out; until then this device acts on it itself.
+ */
+function fixFor(r) {
+  const fix = state.fixes[r.id];
+  if (!fix) return null;
+  const ids = new Set(fix.reports.map((x) => x.id));
+  const latest = state.reports
+    .filter((x) => ids.has(x.id) && (x.decision === 'keep' || x.decision === 'undo') && x.decidedAt >= fix.at)
+    .sort((a, b) => b.decidedAt.localeCompare(a.decidedAt))[0];
+  if (latest) return { fix, decision: latest.decision, by: latest.decidedBy };
+  return { fix, decision: fix.kept ? 'keep' : null, by: fix.kept?.by };
+}
+
+/** Changes someone has undone go back on this device straight away. True if a recipe changed. */
+function applyUndos() {
+  let changed = false;
+  for (const [id, fix] of Object.entries(state.fixes)) {
+    const r = state.byId.get(id);
+    if (!r || fix.undone || fixFor(r).decision !== 'undo') continue;
+    Object.assign(r, fix.before);
+    fix.undone = true;
+    changed = true;
+  }
+  return changed;
+}
+
+const FIELD_NAMES = {
+  title: 'Title', description: 'Description', servings: 'Serves', prepMinutes: 'Prep', cookMinutes: 'Cook',
+  totalMinutes: 'Total time', timesAreEstimated: 'Times estimated', course: 'Course', cuisine: 'Cuisine', tags: 'Tags',
+  ingredientGroups: 'Ingredients', steps: 'Steps', sourceNotes: 'From the original', author: 'Author', book: 'Book', sourceUrl: 'Web address',
+};
+
+const ingredientText = (i) => [[i.quantity, i.unit, i.name].filter(Boolean).join(' '), i.preparation].filter(Boolean).join(', ') +
+  (i.optional ? ' (optional)' : '');
+
+/** What the changed parts said before, as first read from the original. Lists show only the entries that went or changed. */
+function beforeHtml(r, fix) {
+  const now = fix.undone ? fix.fields : r;
+  return Object.entries(fix.before).map(([k, old]) => {
+    let body;
+    if (k === 'steps') {
+      const kept = new Set((now.steps || []).map((s) => s.text));
+      const gone = (old || []).map((s, i) => [i, s]).filter(([, s]) => !kept.has(s.text));
+      body = gone.length ? `<ul class="tips">${gone.map(([i, s]) => `<li><b>Step ${i + 1}:</b> ${esc(s.text)}</li>`).join('')}</ul>`
+        : '<p>The same steps, in a different order or joined up differently in the flowchart.</p>';
+    } else if (k === 'ingredientGroups') {
+      const line = (g, i) => `${g.name ? `${g.name}: ` : ''}${ingredientText(i)}`;
+      const kept = new Set((now.ingredientGroups || []).flatMap((g) => g.items.map((i) => line(g, i))));
+      const gone = (old || []).flatMap((g) => g.items.map((i) => line(g, i))).filter((x) => !kept.has(x));
+      body = gone.length ? `<ul class="tips">${gone.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`
+        : '<p>The same ingredients, grouped or ordered differently.</p>';
+    } else if (Array.isArray(old)) {
+      body = old.length ? `<ul class="tips">${old.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p>Nothing.</p>';
+    } else {
+      body = `<p>${old == null || old === '' ? 'Nothing.' : esc(typeof old === 'boolean' ? (old ? 'Yes' : 'No') : old)}</p>`;
+    }
+    return `<div class="before-field"><h4>${esc(FIELD_NAMES[k] || k)}</h4>${body}</div>`;
+  }).join('');
+}
+
+const shortDate = (iso) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const canWrite = () => DEMO || !!access;
+
+function reportQuote(x) {
+  return `<blockquote class="report-text"><p>${esc(x.text).replace(/\n/g, '<br>')}</p>
+    <footer>${esc(x.name || x.by || 'Someone')}, ${shortDate(x.timestamp || x.at)}</footer></blockquote>`;
+}
+
+/** Claude's change and the reports behind it, with Keep and Undo (just Undo once kept). */
+function changeSlip(r, f) {
+  const last = f.fix.reports.at(-1);
+  const kept = f.decision === 'keep';
+  const buttons = canWrite() ? (kept
+    ? `<button class="link" data-decide="undo" data-report="${esc(last.id)}">Undo the change</button>`
+    : `<button class="button primary" data-decide="keep" data-report="${esc(last.id)}">${icon('check')} Keep the change</button>
+       <button class="button" data-decide="undo" data-report="${esc(last.id)}">${icon('undo')} Undo it</button>`) : '';
+  return `<div class="slip fix-slip ${kept ? 'kept' : ''}">
+    <p class="fix-head">${icon(kept ? 'check' : 'flag')} <b>${kept ? `Changed by Claude after a report, and kept by ${esc(f.by || 'someone')}`
+      : 'Changed by Claude after a report. Does it look right?'}</b></p>
+    ${f.fix.reports.map((x) => `${reportQuote(x)}${x.summary ? `<p class="fix-summary">${esc(x.summary)}</p>` : ''}`).join('')}
+    <details class="before"><summary>What it said before</summary>${beforeHtml(r, f.fix)}</details>
+    ${buttons ? `<p class="fix-actions">${buttons}</p>` : ''}
+  </div>`;
+}
+
+/** Reports on this recipe that are still open, and Claude's change, if any. */
+function renderFix(r) {
+  const el = document.getElementById('fix');
+  if (!el) return;
+  const f = fixFor(r);
+  const inFix = new Set(f ? f.fix.reports.map((x) => x.id) : []);
+  const mine = state.reports.filter((x) => x.recipeId === r.id);
+  const waiting = mine.filter((x) => (x.status === 'waiting' && x.decision !== 'dismiss') || (x.status === 'changed' && !inFix.has(x.id)));
+  const unanswered = mine.filter((x) => (x.status === 'no change' || x.status === 'error') && !x.decision);
+  el.innerHTML = [
+    f && f.decision !== 'undo' ? changeSlip(r, f) : '',
+    f && f.decision === 'undo' ? `<p class="checked-line">${icon('undo')} Claude’s change was undone by ${esc(f.by || 'someone')}. This is the recipe as first read.</p>` : '',
+    ...waiting.map((x) => `<div class="slip report-slip">${reportQuote(x)}
+      <p class="muted">${x.status === 'changed' ? 'Claude has changed the recipe. The change shows next time the book is opened.'
+        : `Claude is checking this against the original${x.detail ? ` (last try: ${esc(x.detail)})` : ''}.`}</p></div>`),
+    ...unanswered.map((x) => `<div class="slip report-slip">${reportQuote(x)}
+      <p>${x.status === 'error' ? '' : 'Claude made no change. '}${esc(x.detail)}</p>
+      ${canWrite() ? `<p><button class="link" data-decide="dismiss" data-report="${esc(x.id)}">Dismiss</button></p>` : ''}</div>`),
+  ].join('');
+}
+
+/** Click handler for Keep, Undo, Dismiss and removing a photo; `after` redraws the page. */
+function onFixClick(after) {
+  return async (e) => {
+    const b = e.target.closest('[data-decide],[data-remove-photo]');
+    if (!b) return;
+    if (b.dataset.removePhoto && !confirm('Remove this photo for everyone?')) return;
+    b.disabled = true;
+    try {
+      if (b.dataset.decide) await decide(b.dataset.report, b.dataset.decide);
+      else await removePhoto(b.dataset.removePhoto);
+      if (b.dataset.decide === 'undo') toast('Undone. The recipe is back to how it was first read.');
+      after(b.dataset.decide);
+    } catch (err) {
+      if (err.status !== 401) alert(`Could not do that: ${err.message}`);
+      b.disabled = false;
+    }
+  };
 }
 
 // ---------- search ----------
@@ -617,7 +868,8 @@ function complexityText(c) {
 
 const CHECKED_PREFIX = 'Checked against the original';
 /** The note saying someone compared the steps with the original and they are right. */
-const checkedNote = (r) => (state.notes || []).find((n) => n.recipeId === r.id && n.text.startsWith(CHECKED_PREFIX));
+const checkedNote = (r) => (state.notes || []).find((n) => n.recipeId === r.id && n.text.startsWith(CHECKED_PREFIX) &&
+  !(state.fixes[r.id] && !state.fixes[r.id].undone && n.timestamp < state.fixes[r.id].at)); // a check from before Claude's change no longer counts
 const hasCheck = (r) => typeof r.certainty === 'number';
 /** Unclear points still worth showing: none once someone has checked the recipe against the original. */
 const unclearFor = (r) => (checkedNote(r) ? [] : r.unclear || []);
@@ -633,7 +885,7 @@ function recipeCard(r) {
   return `
     <article class="card ${pigmentFor(r.course)} ${needs.length ? 'needs' : ''}" data-id="${esc(r.id)}">
       <a class="card-link" href="#/r/${encodeURIComponent(r.id)}">
-        <div class="thumb ${r.photoKind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}" style="--shift:${hash(r.id) % 32}px"></div>
+        <div class="thumb ${mainImage(r)?.kind === 'page' ? 'page' : ''}" data-photo="${esc(r.id)}" style="--shift:${hash(r.id) % 32}px"></div>
         <h3>${esc(r.title)}</h3>
         ${r.author || r.book ? `<p class="meta source-line">${esc([r.author, r.book].filter(Boolean).join(' · '))}</p>` : ''}
         <p class="meta">${[t, r.servings && `serves ${r.servings}`].filter(Boolean).map(esc).join(' · ')}${equipment(r).length ? `<span class="kit" aria-label="Equipment">${kitIcons(r)}</span>` : ''}</p>
@@ -678,7 +930,7 @@ function hydratePhotos(root) {
       if (!e.isIntersecting) continue;
       io.unobserve(e.target);
       const r = state.byId.get(e.target.dataset.photo);
-      recipePhotoUrl(r).then((url) => {
+      mainImage(r)?.url().then((url) => {
         if (!url) return;
         // Photos are shown plainly, never tinted or framed.
         const img = document.createElement('img');
@@ -691,7 +943,10 @@ function hydratePhotos(root) {
       });
     }
   }, { rootMargin: '200px' });
-  root.querySelectorAll('[data-photo]').forEach((el) => state.byId.get(el.dataset.photo)?.photoFileId && io.observe(el));
+  root.querySelectorAll('[data-photo]').forEach((el) => {
+    const r = state.byId.get(el.dataset.photo);
+    if (r && mainImage(r)) io.observe(el);
+  });
 }
 
 function zoom(url, alt) {
@@ -1335,9 +1590,10 @@ function renderRecipe(id) {
           ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd data-fact="${k}">${esc(v)}${k !== 'Serves' ? est : ''}</dd></div>`).join('')}</dl>` : ''}
           ${r.steps.length ? `<a class="button primary cook-start" href="${cookHref}">${icon('pan')} ${started ? `Carry on cooking, step ${Math.min(t.pos, r.steps.length - 1) + 1}` : 'Start cooking'}</a>` : ''}
         </div>
-        ${r.photoKind === 'dish' && r.photoFileId ? `<figure class="plate" data-photo="${esc(r.id)}"></figure>` : ''}
+        ${['dish', 'added'].includes(mainImage(r)?.kind) ? `<figure class="plate" data-photo="${esc(r.id)}"></figure>` : ''}
       </header>
       <ul class="tags">${[r.course, r.cuisine, ...r.tags].filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      <div id="fix" class="fix"></div>
 
       <div class="columns">
         <section class="ingredients">
@@ -1364,6 +1620,11 @@ function renderRecipe(id) {
         <div class="slip"><ul class="tips">${r.sourceNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></div>
       </section>` : ''}
 
+      <section class="gallery-section">
+        <h2 class="section-title">Our photos</h2>
+        <div id="gallery"></div>
+      </section>
+
       <section class="notes">
         <h2 class="section-title">Our notes</h2>
         <div id="notes"><p class="muted">Loading notes…</p></div>
@@ -1375,6 +1636,17 @@ function renderRecipe(id) {
         <p id="note-readonly" class="readonly-note" hidden><button class="link" data-signin>Enter the password</button> to add notes.</p>
       </section>
 
+      <section class="report-problem">
+        <h2 class="section-title">Something wrong?</h2>
+        ${canWrite() ? `<form id="report-form">
+          <p>If something doesn’t match the original, or doesn’t make sense, say what. Claude compares the recipe with the original file and corrects it. Anyone can then keep or undo the change.</p>
+          <label class="vh" for="report-text">What looks wrong</label>
+          <textarea id="report-text" rows="3" maxlength="5000" placeholder="For example: step 4 says 200 g of flour, but the book says 250 g" required></textarea>
+          <button class="button" type="submit">Send to Claude</button>
+          <p id="report-msg" class="link-msg" role="status" hidden></p>
+        </form>` : '<p class="readonly-note"><button class="link" data-signin>Enter the password</button> to report a problem.</p>'}
+      </section>
+
       <footer class="colophon">
         ${!r.author && !r.book && r.sourceCredit ? `<span>Source: ${esc(r.sourceCredit)}</span>` : ''}
         <span>Added${r.addedBy ? ` by ${esc(r.addedBy)}` : ''}${r.addedFrom ? ` from <a href="${esc(r.addedFrom)}" target="_blank" rel="noopener">${esc(siteName(r.addedFrom))}</a>` : ''} on ${new Date(r.addedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
@@ -1383,8 +1655,14 @@ function renderRecipe(id) {
     </article>`;
 
   hydratePhotos(app);
-  app.onclick = null;
+  // Undo changes the recipe, and a new first photo heads the page: redraw it all. Otherwise just the parts that changed.
+  const head = addedPhotosFor(r)[0]?.id;
+  app.onclick = onFixClick((decision) => (decision === 'undo' || addedPhotosFor(r)[0]?.id !== head ? renderRecipe(r.id)
+    : (renderFix(r), renderGallery(r))));
   app.onchange = onTick(r);
+  renderFix(r);
+  renderGallery(r);
+  setupReportForm(r);
   renderSteps(r);
   const scaled = document.getElementById('scaled');
   wireSwaps(scaled, r);
@@ -1469,6 +1747,78 @@ function renderSteps(r) {
   }
   const flow = document.getElementById('flow');
   if (flow?.dataset.done) { delete flow.dataset.done; if (!flow.hidden) renderFlowchart(r); } // marks may have changed
+}
+
+/** Photos people added of the dish as they made it, with a way to add more. */
+function renderGallery(r) {
+  const el = document.getElementById('gallery');
+  if (!el) return;
+  const photos = addedPhotosFor(r);
+  el.innerHTML = `${photos.length ? `<ul class="gallery">${photos.map((p) => `<li>
+      <button class="gallery-img" data-photo-id="${esc(p.id)}" aria-label="Photo by ${esc(p.name)}, shown larger"></button>
+      <p class="sig"><span>${esc(p.name)}, ${shortDate(p.timestamp)}</span>
+        ${canWrite() ? `<button class="link" data-remove-photo="${esc(p.id)}">Remove</button>` : ''}</p></li>`).join('')}</ul>`
+    : `<p class="muted">No photos yet.${canWrite() ? ' Add one when you’ve made it.' : ''}</p>`}
+    ${canWrite() ? `<p class="gallery-add"><button class="button" type="button" id="add-photo">${icon('plus')} Add photos</button>
+      <input type="file" id="add-photo-file" accept="image/*,.heic,.heif" multiple hidden></p>
+      <p id="photo-msg" class="link-msg" role="status" hidden></p>` : ''}`;
+  el.querySelectorAll('[data-photo-id]').forEach((b) => {
+    const p = photos.find((x) => x.id === b.dataset.photoId);
+    photoUrl(p.fileId).then((url) => {
+      if (!url) return;
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      b.append(img);
+      b.onclick = () => zoom(url, `Photo of ${r.title} by ${p.name}`);
+    });
+  });
+  const input = document.getElementById('add-photo-file');
+  if (!input) return;
+  const head = photos[0]?.id;
+  document.getElementById('add-photo').onclick = () => input.click();
+  const say = formMessage('photo-msg');
+  input.onchange = async () => {
+    const files = [...input.files];
+    input.value = '';
+    for (const [i, file] of files.entries()) {
+      say(files.length > 1 ? `Adding photo ${i + 1} of ${files.length}…` : 'Adding the photo…');
+      try {
+        await addPhoto(r, file);
+      } catch (err) {
+        renderGallery(r); // shows any that went in before this one
+        if (err.status !== 401) formMessage('photo-msg')(`Could not add ${files.length > 1 ? `“${esc(file.name)}”` : 'it'}: ${esc(err.message)}`, true);
+        return;
+      }
+    }
+    if (!document.getElementById('gallery')) return; // gone to another page meanwhile
+    if (addedPhotosFor(r)[0]?.id !== head) renderRecipe(r.id); // the first photo may now head the page
+    else renderGallery(r);
+  };
+}
+
+function setupReportForm(r) {
+  const form = document.getElementById('report-form');
+  if (!form) return;
+  const say = formMessage('report-msg');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const box = document.getElementById('report-text');
+    const text = box.value.trim();
+    if (!text) return;
+    e.submitter.disabled = true;
+    try {
+      await sendReport(r, text);
+      box.value = '';
+      say(DEMO ? 'Kept in this browser. The demo doesn’t send anything to Claude.'
+        : 'Sent. Claude checks it against the original in the next few minutes. Its change shows at the top of this recipe for anyone to keep or undo.');
+      renderFix(r);
+    } catch (err) {
+      if (err.status !== 401) say(`Could not send it: ${esc(err.message)}`, true);
+    } finally {
+      e.submitter.disabled = false;
+    }
+  };
 }
 
 async function setupNoteForm(r) {
@@ -1798,7 +2148,8 @@ async function renderInbox() {
         To fix a recipe there, edit or replace its file; delete the file to remove the recipe.</p>
       <h2 class="section-title">Checking the conversions</h2>
       <p>After converting a recipe, Claude reads it again for steps that may have come out wrong, and lists the equipment it needs.
-        <a href="#/review">See which recipes to check against the original</a>.</p>
+        <a href="#/review">See which recipes to check against the original</a>.
+        On any recipe, <b>Something wrong?</b> asks Claude to correct it from the original; anyone can then keep or undo the change.</p>
       <h2 class="section-title">Processing status</h2>
       <div id="status"><p class="muted">Loading…</p></div>
     </section>`;
@@ -1917,6 +2268,19 @@ async function renderReview() {
     }
   }
 
+  // Reported problems and Claude's changes, and photos people added.
+  const changes = state.recipes.map((r) => ({ r, f: fixFor(r) })).filter((x) => x.f && x.f.decision !== 'undo')
+    .sort((a, b) => b.f.fix.at.localeCompare(a.f.fix.at));
+  const toDecide = changes.filter((x) => x.f.decision !== 'keep');
+  const kept = changes.filter((x) => x.f.decision === 'keep');
+  const titleOf = (x) => {
+    const r = state.byId.get(x.recipeId);
+    return r ? `<a class="review-title" href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>` : '<span class="muted">A recipe no longer in the book</span>';
+  };
+  const waiting = state.reports.filter((x) => x.status === 'waiting' && x.decision !== 'dismiss');
+  const unanswered = state.reports.filter((x) => (x.status === 'no change' || x.status === 'error') && !x.decision);
+  const photos = state.addedPhotos.slice().reverse();
+
   const band = (c) => (c < 60 ? 'low' : c < 90 ? 'mid' : 'high');
   const row = ({ r, c }) => {
     const unclear = r.unclear || [];
@@ -1937,6 +2301,14 @@ async function renderReview() {
       <a href="#/inbox" class="back">${icon('back')} Add recipes</a>
       <header class="page-head"><h1>Recipes to check</h1>
         <p class="lede">Claude reread each converted recipe for steps that could send a cook wrong, and scored how sure it is that the steps and flowchart match the original. The least certain come first, then the most complex. Open one, compare it with the original file, and mark it as checked.</p></header>
+      ${toDecide.length ? `<h2 class="section-title">Changes to keep or undo</h2>
+        <p class="muted">Claude changed these after someone reported a problem. Keep a change if it looks right; undo it if not.</p>
+        <ul class="fix-list">${toDecide.map(({ r, f }) => `<li><a class="review-title" href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>${changeSlip(r, f)}</li>`).join('')}</ul>` : ''}
+      ${waiting.length ? `<h2 class="section-title">Reports Claude is checking</h2>
+        <ul class="fix-list">${waiting.map((x) => `<li>${titleOf(x)}<div class="slip report-slip">${reportQuote(x)}</div></li>`).join('')}</ul>` : ''}
+      ${unanswered.length ? `<h2 class="section-title">Reports Claude made no change for</h2>
+        <ul class="fix-list">${unanswered.map((x) => `<li>${titleOf(x)}<div class="slip report-slip">${reportQuote(x)}<p>${esc(x.detail)}</p>
+          ${canWrite() ? `<p><button class="link" data-decide="dismiss" data-report="${esc(x.id)}">Dismiss</button></p>` : ''}</div></li>`).join('')}</ul>` : ''}
       ${onSite.length ? `<h2 class="section-title">Added on this website</h2>
         <p class="muted">Recipes added here rather than in the shared Drive folder, newest first. To remove one, delete its file in Drive.</p>
         <ul class="review-done site-added">${onSite.map((r) => `<li><a href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>
@@ -1956,10 +2328,32 @@ async function renderReview() {
       ${done.length ? `<h2 class="section-title">Checked against the original</h2>
         <ul class="review-done">${done.map(({ r, done: n }) => `<li><a href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>
           <span class="muted">${esc(n.name || n.email)}, ${new Date(n.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></li>`).join('')}</ul>` : ''}
+      ${kept.length ? `<h2 class="section-title">Changes kept</h2>
+        <ul class="review-done">${kept.map(({ r, f }) => `<li><a href="#/r/${encodeURIComponent(r.id)}">${esc(r.title)}</a>
+          <span class="muted">${esc(f.fix.reports.at(-1).summary || '')} Kept by ${esc(f.by || 'someone')}.</span>
+          ${canWrite() ? `<button class="link" data-decide="undo" data-report="${esc(f.fix.reports.at(-1).id)}">Undo</button>` : ''}</li>`).join('')}</ul>` : ''}
+      ${photos.length ? `<h2 class="section-title">Added photos</h2>
+        <p class="muted">Photos people added to recipes, newest first. Remove any that don’t belong.</p>
+        <ul class="gallery review-photos">${photos.map((p) => `<li>
+          <button class="gallery-img" data-photo-id="${esc(p.id)}" aria-label="Photo by ${esc(p.name)}, shown larger"></button>
+          <p class="sig"><span>${titleOf(p)}<br>${esc(p.name)}, ${shortDate(p.timestamp)}</span>
+            ${canWrite() ? `<button class="link" data-remove-photo="${esc(p.id)}">Remove</button>` : ''}</p></li>`).join('')}</ul>` : ''}
       ${others.size ? `<h2 class="section-title">Other equipment</h2>
         <p class="muted">Equipment that isn't one of the usual kinds. Anything that keeps coming up could get its own icon.</p>
         <ul class="tags">${[...others].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name, n]) => `<li>${esc(name)} <b>${n}</b></li>`).join('')}</ul>` : ''}
     </section>`;
+  app.onclick = onFixClick(renderReview);
+  app.querySelectorAll('[data-photo-id]').forEach((b) => {
+    const p = state.addedPhotos.find((x) => x.id === b.dataset.photoId);
+    photoUrl(p.fileId).then((url) => {
+      if (!url) return;
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      b.append(img);
+      b.onclick = () => zoom(url, `Photo by ${p.name}`);
+    });
+  });
 }
 
 // ---------- routing & startup ----------
@@ -1984,6 +2378,7 @@ async function start(book) {
   if (DEMO) {
     state.user = { device: 'device:demo', name: 'Demo user' };
     await loadRecipes();
+    loadDemoExtras();
   } else {
     if (!book) {
       app.innerHTML = '<p class="muted center">Opening the book…</p>';
@@ -2023,10 +2418,19 @@ async function refresh() {
   try {
     const fresh = await useBook(await call('open', { since: state.version }));
     state.saved = null;
-    if (!fresh || !access) return;
+    if (!access) return;
+    if (!fresh) { // the recipes are as they were, but reports and photos may have moved on
+      const m = (location.hash || '').match(/^#\/r\/([^/]+)$/);
+      const r = m && state.byId.get(decodeURIComponent(m[1]));
+      if (r && document.getElementById('fix')) {
+        if (state.undoneMeanwhile) renderRecipe(r.id); // someone undid a change on another device
+        else { renderFix(r); renderGallery(r); }
+      }
+      return;
+    }
     const home = (location.hash || '#/') === '#/';
     if (home && window.scrollY < 40 && !state.search.text && !state.search.ingredients.length) return route();
-    banner('There are new recipes. <button class="link" id="show-new">Show them</button>', 'info');
+    banner('The book has changed since this page opened. <button class="link" id="show-new">Show the latest</button>', 'info');
     document.getElementById('show-new').onclick = () => { banner(''); route(); };
   } catch (err) {
     if (err.status !== 401 && state.saved) banner(`Showing the copy saved on this device on ${savedWhen()}. ${esc(err.message)}`, 'warn');
@@ -2044,6 +2448,13 @@ async function openSaved() {
     state.version = saved.version || null;
     const notes = await savedGet('notes.json'); // the latest come with the refresh
     state.notes = notes ? await notes.json() : null;
+    const extras = await savedGet('extras.json');
+    if (extras) {
+      const { photos, reports } = await extras.json();
+      state.addedPhotos = photos || [];
+      state.reports = reports || [];
+      if (applyUndos()) buildIngredientIndex();
+    }
     return true;
   } catch {
     return false;

@@ -138,8 +138,8 @@
         {
           "id": "s3",
           "label": "Simmer sauce",
-          "text": "Add the tomatoes, olives and capers and simmer for 10 minutes until thickened.",
-          "minutes": 10,
+          "text": "Add the tomatoes, olives and capers and simmer for 15 minutes until thick.",
+          "minutes": 15,
           "dependsOn": [
             "s2"
           ]
@@ -688,5 +688,113 @@
       "certainty": 50,
       "checkVersion": 1
     }
-  ]
+  ],
+  "fixes": {
+    "demo-1": {
+      "fields": {
+        "steps": [
+          {
+            "id": "s1",
+            "label": "Boil salted water",
+            "text": "Bring a large pan of well-salted water to the boil.",
+            "minutes": 10,
+            "dependsOn": []
+          },
+          {
+            "id": "s2",
+            "label": "Fry garlic & anchovy",
+            "text": "Meanwhile, warm the oil in a frying pan and fry the garlic, anchovies and chilli until the anchovies melt.",
+            "minutes": 3,
+            "dependsOn": []
+          },
+          {
+            "id": "s3",
+            "label": "Simmer sauce",
+            "text": "Add the tomatoes, olives and capers and simmer for 15 minutes until thick.",
+            "minutes": 15,
+            "dependsOn": [
+              "s2"
+            ]
+          },
+          {
+            "id": "s4",
+            "label": "Cook spaghetti",
+            "text": "Cook the spaghetti until al dente, reserving a mug of pasta water.",
+            "minutes": 10,
+            "dependsOn": [
+              "s1"
+            ]
+          },
+          {
+            "id": "s5",
+            "label": "Toss together",
+            "text": "Toss the pasta through the sauce, loosening with pasta water. Scatter with parsley and serve.",
+            "minutes": 2,
+            "dependsOn": [
+              "s3",
+              "s4"
+            ]
+          }
+        ]
+      },
+      "before": {
+        "steps": [
+          {
+            "id": "s1",
+            "label": "Boil salted water",
+            "text": "Bring a large pan of well-salted water to the boil.",
+            "minutes": 10,
+            "dependsOn": []
+          },
+          {
+            "id": "s2",
+            "label": "Fry garlic & anchovy",
+            "text": "Meanwhile, warm the oil in a frying pan and fry the garlic, anchovies and chilli until the anchovies melt.",
+            "minutes": 3,
+            "dependsOn": []
+          },
+          {
+            "id": "s3",
+            "label": "Simmer sauce",
+            "text": "Add the tomatoes, olives and capers and simmer for 10 minutes until thickened.",
+            "minutes": 10,
+            "dependsOn": [
+              "s2"
+            ]
+          },
+          {
+            "id": "s4",
+            "label": "Cook spaghetti",
+            "text": "Cook the spaghetti until al dente, reserving a mug of pasta water.",
+            "minutes": 10,
+            "dependsOn": [
+              "s1"
+            ]
+          },
+          {
+            "id": "s5",
+            "label": "Toss together",
+            "text": "Toss the pasta through the sauce, loosening with pasta water. Scatter with parsley and serve.",
+            "minutes": 2,
+            "dependsOn": [
+              "s3",
+              "s4"
+            ]
+          }
+        ]
+      },
+      "reports": [
+        {
+          "id": "demo-report-1",
+          "by": "Demo user",
+          "at": "2026-09-21T18:00:00Z",
+          "text": "Step 3 should say 15 minutes, not 10. The book says to simmer until thick.",
+          "summary": "Step 3 now simmers for 15 minutes, as the original says."
+        }
+      ],
+      "at": "2026-09-21T18:05:00Z",
+      "kept": null,
+      "sourceModified": null
+    }
+  }
 }

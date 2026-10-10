@@ -18,6 +18,9 @@
 var UPLOAD_FOLDER_NAME = 'Uploaded on the website';
 var UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
 var PHOTOS_PER_REQUEST = 8;
+var ADDED_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+var ADDED_PHOTO_TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+var DECISIONS = { keep: 1, undo: 1, dismiss: 1 };
 var PHOTO_IDS_KEY = 'site-photo-ids';
 var SOON_HANDLER = 'processSoon';
 var RECIPE_TYPES = {
@@ -59,13 +62,16 @@ function doPost(e) {
 }
 
 var SITE_ACTIONS = {
-  /** The book: recipes.json unless the site already has this version, and the notes. */
+  /** The book: recipes.json unless the site already has this version, the notes, added photos and reported problems. */
   open: function (req) {
     var file = DriveApp.getFileById(requireProp_('RECIPES_FILE_ID'));
     var version = file.getLastUpdated().toISOString();
     var text = req.since === version ? 'null' : (file.getBlob().getDataAsString() || 'null');
+    var ss = SpreadsheetApp.openById(requireProp_('SHEET_ID'));
     // recipes.json is already JSON, so it goes in as it is rather than being parsed and written out again.
-    return '{"version":' + JSON.stringify(version) + ',"notes":' + JSON.stringify(readNotes_()) + ',"index":' + text + '}';
+    return '{"version":' + JSON.stringify(version) + ',"notes":' + JSON.stringify(readNotes_(ss)) +
+      ',"photos":' + JSON.stringify(readPhotos_(ss)) + ',"reports":' + JSON.stringify(readReports_(ss)) +
+      ',"index":' + text + '}';
   },
 
   notes: function () {
@@ -168,6 +174,74 @@ var SITE_ACTIONS = {
     }
     scheduleSoon_();
     return { file: base + '.' + recipe.ext };
+  },
+
+  /** A photo of a recipe as made, kept beside the job's own photos and listed in the Photos tab. */
+  addPhoto: function (req) {
+    var who = visitor_(req);
+    var recipeId = String(req.recipeId || '');
+    if (!/^[\w-]{10,}-\d+$/.test(recipeId)) throw siteError_('That recipe is not in the book.', 400);
+    var part = req.photo || {};
+    var ext = (/\.([a-z0-9]+)$/i.exec(String(part.name || '')) || [])[1];
+    var type = ADDED_PHOTO_TYPES[String(ext).toLowerCase()];
+    if (!type || !part.data) throw siteError_('The photo should be a JPEG, PNG or WebP picture.', 400);
+    var bytes = Utilities.base64Decode(String(part.data));
+    if (bytes.length > ADDED_PHOTO_MAX_BYTES) throw siteError_('That photo is too big. It can be up to 5 MB.', 413);
+
+    var id = Utilities.getUuid();
+    var name = 'added-' + id + '.' + (type === 'image/jpeg' ? 'jpg' : type.slice(6));
+    var file = DriveApp.getFolderById(requireProp_('DATA_FOLDER_ID')).createFile(Utilities.newBlob(bytes, type, name));
+    file.setDescription('Added by ' + who.name + ' on the website, for ' + recipeId);
+    var ss = SpreadsheetApp.openById(requireProp_('SHEET_ID'));
+    siteSheet_(PHOTOS_SHEET, PHOTOS_HEADERS, ss).appendRow(asText_([id, recipeId, new Date().toISOString(), who.device, who.name, file.getId(), '', '']));
+    CacheService.getScriptCache().remove(PHOTO_IDS_KEY);
+    return { id: id, photos: readPhotos_(ss) };
+  },
+
+  /** Anyone with the password can take an added photo off; the file goes to the bin. */
+  removePhoto: function (req) {
+    var who = visitor_(req);
+    var ss = SpreadsheetApp.openById(requireProp_('SHEET_ID'));
+    var sheet = siteSheet_(PHOTOS_SHEET, PHOTOS_HEADERS, ss);
+    var photo = sheetRecords_(sheet, PHOTOS_HEADERS).filter(function (p) { return p.id === req.id && !p.removedAt; })[0];
+    if (photo) {
+      sheet.getRange(photo.row, 7, 1, 2).setValues([asText_([who.name, new Date().toISOString()])]);
+      trashQuietly_(photo.fileId);
+      CacheService.getScriptCache().remove(PHOTO_IDS_KEY);
+    }
+    return { photos: readPhotos_(ss) };
+  },
+
+  /** Something wrong with a recipe: the job asks Claude to fix it from the original. */
+  report: function (req) {
+    var who = visitor_(req);
+    var text = String(req.text || '').trim();
+    var recipeId = String(req.recipeId || '');
+    if (!text || !recipeId) throw siteError_('Say what looks wrong.', 400);
+    if (text.length > 5000) throw siteError_('That is too long.', 400);
+    var ss = SpreadsheetApp.openById(requireProp_('SHEET_ID'));
+    siteSheet_(REPORTS_SHEET, REPORTS_HEADERS, ss).appendRow(asText_([
+      Utilities.getUuid(), recipeId, new Date().toISOString(), who.device, who.name, text, 'waiting', '', '', '', '', 0
+    ]));
+    scheduleSoon_();
+    return { reports: readReports_(ss) };
+  },
+
+  /** Keep or undo Claude's change, or dismiss a report it couldn't act on. Anyone with the password can decide. */
+  decideFix: function (req) {
+    var who = visitor_(req);
+    var decision = String(req.decision || '');
+    if (!DECISIONS[decision]) throw siteError_('Unknown decision', 400);
+    var ss = SpreadsheetApp.openById(requireProp_('SHEET_ID'));
+    var sheet = siteSheet_(REPORTS_SHEET, REPORTS_HEADERS, ss);
+    var report = sheetRecords_(sheet, REPORTS_HEADERS).filter(function (x) { return x.id === req.id; })[0];
+    if (!report) throw siteError_('That report has gone.', 404);
+    if ((decision === 'dismiss') === (report.status === 'changed')) {
+      throw siteError_(report.status === 'changed' ? 'Keep or undo the change instead.' : 'There is no change to keep or undo.', 409);
+    }
+    sheet.getRange(report.row, 9, 1, 3).setValues([asText_([decision, who.name, new Date().toISOString()])]);
+    if (decision !== 'dismiss') scheduleSoon_();
+    return { reports: readReports_(ss) };
   }
 };
 
@@ -197,12 +271,12 @@ function visitor_(req) {
   return { device: device, name: name.slice(0, 60) };
 }
 
-function notesSheet_() {
-  return SpreadsheetApp.openById(requireProp_('SHEET_ID')).getSheetByName('Notes');
+function notesSheet_(ss) {
+  return (ss || SpreadsheetApp.openById(requireProp_('SHEET_ID'))).getSheetByName('Notes');
 }
 
-function readNotes_() {
-  var sheet = notesSheet_();
+function readNotes_(ss) {
+  var sheet = notesSheet_(ss);
   var last = sheet.getLastRow();
   if (last < 2) return [];
   return sheet.getRange(2, 1, last - 1, 6).getDisplayValues()
@@ -212,12 +286,29 @@ function readNotes_() {
     .filter(function (n) { return n.id && n.text; });
 }
 
+/** Photos added on the site and not taken off again, without the device ids. */
+function readPhotos_(ss) {
+  return sheetRecords_(siteSheet_(PHOTOS_SHEET, PHOTOS_HEADERS, ss), PHOTOS_HEADERS)
+    .filter(function (p) { return p.fileId && !p.removedAt; })
+    .map(function (p) { return { id: p.id, recipeId: p.recipeId, timestamp: p.timestamp, name: p.name, fileId: p.fileId }; });
+}
+
+/** Every reported problem and what came of it, without the device ids. */
+function readReports_(ss) {
+  return sheetRecords_(siteSheet_(REPORTS_SHEET, REPORTS_HEADERS, ss), REPORTS_HEADERS).map(function (x) {
+    return {
+      id: x.id, recipeId: x.recipeId, timestamp: x.timestamp, name: x.name, text: x.text, status: x.status,
+      detail: x.detail, decision: x.decision, decidedBy: x.decidedBy, decidedAt: x.decidedAt
+    };
+  });
+}
+
 /** A leading ' keeps whatever people type as plain text: no formulas, dates or numbers. */
 function asText_(values) {
   return values.map(function (v) { return "'" + v; });
 }
 
-/** The ids of every recipe photo, kept for a while; saveIndex_ clears it when recipes change. */
+/** The ids of every recipe photo and added photo, kept for a while; saveIndex_ and photo changes clear it. */
 function photoIds_() {
   var cache = CacheService.getScriptCache();
   var cached = cache.get(PHOTO_IDS_KEY);
@@ -225,6 +316,7 @@ function photoIds_() {
   if (!ids) {
     ids = {};
     loadIndex_().recipes.forEach(function (r) { if (r.photoFileId) ids[r.photoFileId] = 1; });
+    readPhotos_().forEach(function (p) { ids[p.fileId] = 1; });
     try { cache.put(PHOTO_IDS_KEY, JSON.stringify(ids), 6 * 3600); } catch (err) { /* too big to keep: read it each time */ }
   }
   return ids;

@@ -657,13 +657,49 @@ body.cooking { overflow: hidden; }
 .review-row .kit { margin-left: 0; }
 .review .tags b { font-weight: 900; color: var(--ink); margin-left: .2rem; }
 
+/* reported problems and Claude's changes */
+.fix:empty { display: none; }
+.fix { margin-top: 1.6rem; }
+.fix-slip { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--pg2) 70%, transparent); }
+.fix-slip.kept { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--have) 45%, transparent); }
+.fix-head { display: flex; gap: .45rem; align-items: center; }
+.fix-head .i { flex: none; width: 1.15rem; height: 1.15rem; color: var(--pg2); }
+.fix-slip.kept .fix-head .i { color: var(--have); }
+.report-text { margin: .6rem 0; padding: 0 0 0 .9rem; border-left: 3px solid var(--rule-strong); }
+.report-text p { font-style: italic; }
+.report-text footer { font-size: .84rem; font-weight: 700; color: var(--muted); }
+.fix-summary { font-weight: 700; }
+.before { margin: .5rem 0 .2rem; }
+.before summary { cursor: pointer; font-weight: 750; color: var(--link); width: fit-content; }
+.before-field { margin: .6rem 0 0; padding: .6rem .9rem; border-radius: 12px; background: color-mix(in oklab, var(--rule) 40%, var(--surface)); }
+.before-field h4 { margin: 0 0 .25rem; font-size: .9rem; }
+.before-field p { margin: 0; }
+.fix-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-top: .8rem !important; }
+.report-slip { box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.fix-list { list-style: none; margin: 0 0 1rem; padding: 0; }
+.fix-list > li { padding: .7rem 0 .3rem; border-bottom: 1px solid var(--rule); }
+.fix-list > li > .slip { margin-top: .5rem; }
+
+/* photos people added */
+.gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+.gallery li { min-width: 0; }
+.gallery-img { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; border-radius: 18px; overflow: hidden; background: var(--rule); cursor: zoom-in; }
+.gallery-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gallery .sig { margin: .35rem 0 0; font-size: .82rem; font-weight: 700; color: var(--muted); display: flex; flex-wrap: wrap; gap: .1rem .7rem; justify-content: space-between; }
+.gallery .sig .review-title { font-size: .9rem; }
+.gallery-add { margin: 1rem 0 0; }
+.report-problem form { display: grid; gap: .6rem; justify-items: start; margin-top: .4rem; max-width: 70ch; }
+.report-problem form p { margin: 0; max-width: 62ch; }
+.report-problem .button, .gallery-add .button { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
   .leaving-line::after { animation-duration: var(--fade, 4s) !important; } /* the countdown still shows, without the fade */
 }
 
 @media print {
-  .topbar, .back, .method-tabs, .notes form, .banner, .cook-start, .swatches, .toast { display: none !important; }
+  .topbar, .back, .method-tabs, .notes form, .banner, .cook-start, .swatches, .toast,
+  .report-problem, .gallery-add, .fix-actions, .gallery .link { display: none !important; }
   .recipe-intro { background: none !important; padding: 0; }
   .steps, .flow { display: block !important; }
 }

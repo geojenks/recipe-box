@@ -396,3 +396,109 @@ function parseCheckResponse_(body, r) {
     references: out.references
   };
 }
+
+// ---------- fixing a recipe after a report ----------
+//
+// Someone cooking from a recipe reports a problem ("step 4 says 100 g sugar, the
+// book says 200 g"). Claude gets the original file again, the recipe as it is on
+// the site, and the report, and returns the recipe with only that put right.
+
+var FIX_PROMPT = [
+  'You correct recipes on a small private recipe website. Each recipe was converted from an original file',
+  '(a PDF, a photo of a cookbook page or card, or a web page saved as text) into a structured format.',
+  'Someone has reported a problem with one. You get the original file, the recipe as it is on the site',
+  '(JSON), and the report.',
+  '',
+  'Rules:',
+  '- The original is the authority. Check the report against it and put right anything the conversion got',
+  '  wrong. If the report asks for something the original does not say (a correction of the original',
+  '  itself, or a preference), make it only if the report clearly asks for it, and say so in the summary.',
+  '- Change only what the report is about, and whatever has to change with it. Copy everything else',
+  '  exactly as it is, word for word.',
+  '- Keep to the format: quantities in the source units, "canonical" the plain lowercase singular ingredient',
+  '  name, "staple" only for pantry basics. Steps are short single actions with ids "s1", "s2", ... in',
+  '  order, a 2-5 word "label", and "dependsOn" listing the earlier steps whose output each step uses.',
+  '  If you add, remove or reorder steps, renumber the ids and update every dependsOn to match.',
+  '- If nothing needs changing (the recipe already matches the original and the report asks for nothing',
+  '  else), set "changed" to false and return the recipe as it is.',
+  '- "summary": one or two plain sentences for the cooks saying what you changed, or why nothing, e.g.',
+  '  "Step 4 now says 200 g of sugar, as in the original, not 100 g." Write "step 4", never the id ("s4").'
+].join('\n');
+
+// The fields Claude may change: everything the conversion gives except where the photo is.
+var FIX_FIELDS = RECIPE_SCHEMA.properties.recipes.items.required.filter(function (k) { return k !== 'dishPhoto'; });
+
+var FIX_SCHEMA = (function () {
+  var item = RECIPE_SCHEMA.properties.recipes.items;
+  var props = {};
+  FIX_FIELDS.forEach(function (k) { props[k] = item.properties[k]; });
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['changed', 'summary', 'recipe'],
+    properties: {
+      changed: { type: 'boolean' },
+      summary: { type: 'string' },
+      recipe: { type: 'object', additionalProperties: false, required: FIX_FIELDS, properties: props }
+    }
+  };
+})();
+
+/** The recipe's fields Claude may change, as they are now. */
+function fixFieldsOf_(r) {
+  var out = {};
+  FIX_FIELDS.forEach(function (k) { out[k] = r[k] === undefined ? null : r[k]; });
+  return out;
+}
+
+/**
+ * The request asking Claude to fix one recipe.
+ * @param input the original file, as buildExtractionRequest_ takes it
+ * @param fileName the original file's name
+ * @param r the recipe as it is on the site
+ * @param report what the person wrote
+ */
+function buildFixRequest_(input, fileName, r, report) {
+  var content = buildExtractionRequest_(input, fileName).messages[0].content.slice(0, -1);
+  content.push({
+    type: 'text',
+    text: 'File name: ' + fileName + '\nThis is the original. If it holds several recipes, fix only the one titled "' +
+      r.title + '".\n\nThe recipe as it is on the site:\n' + JSON.stringify(fixFieldsOf_(r)) +
+      '\n\nThe report:\n' + report
+  });
+  return {
+    model: CLAUDE_MODEL,
+    max_tokens: 16000,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: FIX_SCHEMA } },
+    fallbacks: 'default',
+    system: FIX_PROMPT,
+    messages: [{ role: 'user', content: content }]
+  };
+}
+
+/**
+ * Parses Claude's fix into {summary, fields, before}: the fields that changed, with
+ * their new and old values. fields is null if nothing changed. Throws on an error.
+ */
+function parseFixResponse_(body, r) {
+  var out = parseExtractionResponse_(body);
+  var fixed = out.recipe;
+  // Steps must keep to the format the flowchart is drawn from: unique ids, links only to earlier steps.
+  if (fixed.steps) {
+    var seen = {};
+    fixed.steps.forEach(function (s, i) {
+      if (!s.id || seen[s.id]) s.id = 's' + (i + 1);
+      s.dependsOn = (s.dependsOn || []).filter(function (d) { return seen[d]; });
+      seen[s.id] = true;
+    });
+  }
+  var fields = {}, before = {}, any = false;
+  FIX_FIELDS.forEach(function (k) {
+    var was = r[k] === undefined ? null : r[k];
+    if (JSON.stringify(fixed[k]) === JSON.stringify(was)) return;
+    fields[k] = fixed[k];
+    before[k] = was;
+    any = true;
+  });
+  return { summary: String(out.summary || '').trim(), fields: any ? fields : null, before: any ? before : null };
+}

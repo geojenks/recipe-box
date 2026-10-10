@@ -14,6 +14,8 @@ Features:
 - A "Keep screen on" switch for cooking from your phone.
 - Cooking mode: one step per screen in large type, readable at arm's length, with the ingredients a tap away. It keeps the screen on and remembers your place.
 - Add a recipe on the site from a web address or a file. Recipes added this way are marked, and listed on the review page, so they can be checked or removed.
+- Add your own photos of a dish to its recipe.
+- Report a problem with a recipe. Claude compares it with the original file and corrects it, and anyone can keep or undo the change.
 - The book is saved on each phone, so it opens straight away and works offline.
 
 ```
@@ -23,8 +25,8 @@ Shared Drive folder "Recipe Box"   <- everyone uploads here (subfolders OK)
 ├── Grandma's scones.jpg           <- a photo of a recipe card is fine too
 ├── Added from the web/            <- recipes added by web address on the site (created by the job)
 ├── Uploaded on the website/       <- files uploaded on the site (created by the web app)
-├── Recipe Box notes (Sheet)       <- Notes, Status and Links tabs (created by setup and the job)
-└── _website data (do not edit)/   <- recipes.json + generated photos (created by setup)
+├── Recipe Box notes (Sheet)       <- Notes, Status, Links, Reports and Photos tabs (created by setup, the job and the web app)
+└── _website data (do not edit)/   <- recipes.json, generated photos and photos added on the site (created by setup)
 
 apps-script/   background job (copy into script.google.com)
 docs/          the website (served by GitHub Pages)
@@ -77,8 +79,11 @@ The web app runs as you, so it can read the folder, but it does nothing until it
 - **Fix a recipe:** edit or replace the file, and it is processed again. **Remove a recipe:** delete the file.
 - **Something didn't appear?** The site's **Add recipes** page (and the Status tab of the notes sheet) shows each file's status and any error. A file that fails 3 times is skipped until it changes.
 - **Check what was added on the site:** the review page ("See which recipes to check" on **Add recipes**) lists every recipe added on the site, newest first, with who added it and a link to its file. Delete the file to remove the recipe.
+- **Add a photo of a dish:** on the recipe page, under **Our photos**, tap **Add photos**. You can pick several at once. Each is made smaller (1600 pixels across at most) before it's sent, and kept in the website data folder. The Photos tab lists them. If the original has no photo of the dish, the first photo added heads the recipe and its card. Anyone with the password can remove a photo; the file goes to the Drive bin.
+- **Report a problem:** on the recipe page, under **Something wrong?**, say what looks wrong. It goes in the Reports tab. A few minutes later Claude rereads the original file with the report and the recipe as it stands, and either corrects the recipe or says why it made no change. A change shows at the top of the recipe, with what it said before, and on the review page, for anyone to **Keep** or **Undo**. Undo puts back the recipe as first read from the file. A changed recipe is also checked again for unclear steps.
+- A change by Claude lasts while the file stays the same, even if the recipe is read from it again. If someone edits or replaces the file, the change gives way to the new reading. Changes are stored against the recipe's place in its file (the first recipe, the second, and so on), so if an edit to a file with several recipes adds or removes one, a change may no longer match: it is then dropped, and the report says so.
 - **Change the password** (for example to remove someone's access): change `SITE_PASSWORD` in the script properties. Every device then asks for the new one. No new deployment is needed.
-- Anyone with the password can add notes and recipes under any name. Notes can only be deleted from the device that wrote them.
+- Anyone with the password can add notes, recipes, photos and reports under any name, and keep or undo changes. Notes can only be deleted from the device that wrote them.
 
 ## Testing the extraction locally
 
@@ -102,6 +107,7 @@ Don't commit real recipes in `docs/demo/recipes.json`, because GitHub Pages woul
 - **Extraction** (`apps-script/Extract.gs`): Claude Sonnet 5.5 with structured outputs, so every recipe comes back in exactly the same JSON shape. The request also turns on Anthropic's server-side fallback, so if a safety check wrongly declines a recipe, another model retries it automatically. To change model, edit `CLAUDE_MODEL`. For each ingredient Claude also returns a plain search name (`"2 red onions, sliced"` becomes `red onion`) and a staple flag. For each step it returns which earlier steps it depends on, and the flowchart is drawn from those links. It also returns the author, the book or website, a printed web address, and where the dish photo is. Clicking an author or book on the site lists all their recipes. Changing the extraction format means bumping `EXTRACT_VERSION` in `Code.gs`, which re-processes every file once.
 - **Photos** (`apps-script/Photos.gs`): when Claude says there's a dish photo, this pulls the largest reasonably-shaped JPEG out of the PDF (skipping logos, banners, and scanned PDFs where the biggest image is the whole page). If there isn't a usable JPEG, the job saves a picture of the page the photo is on and the website cuts out the box Claude gave. Drive only renders the first page of a file, so for later pages `PdfPages.gs` copies that page into a temporary one-page PDF (using pdf-lib), waits for Drive to render it, then deletes it. If Drive hasn't rendered it within about 30 seconds, the recipe keeps a picture of page 1 and the next run tries again. Bumping `PHOTO_VERSION` in `Code.gs` redoes every photo without calling Claude. Check what it would pick with `node tools/test-photos.mjs samples/*.pdf`.
 - **Job** (`apps-script/Code.gs`): runs hourly under a lock. Each run works for up to 4.5 minutes and saves after every file. If files are left over, it schedules itself to carry on a minute later, and the Status tab lists them as "waiting". It notices new, changed and deleted files.
-- **Web app** (`apps-script/Site.gs`): the site's only way in. Each request carries the password; a wrong one waits 2 seconds before failing. It sends `recipes.json` (only when it has changed), the notes, the status list, and recipe photos (only files that are a recipe's photo, so the password doesn't open the rest of Drive). It adds and deletes notes, adds web addresses, and saves uploads. After a web address or an upload it runs the job about a minute later instead of waiting for the hour.
+- **Web app** (`apps-script/Site.gs`): the site's only way in. Each request carries the password; a wrong one waits 2 seconds before failing. It sends `recipes.json` (only when it has changed), the notes, the status list, and recipe photos (only files that are a recipe's photo, so the password doesn't open the rest of Drive). It adds and deletes notes, adds web addresses, saves uploads and added photos, and records reports and keep, undo or dismiss. After a web address, an upload, a report or a keep or undo it runs the job about a minute later instead of waiting for the hour.
+- **Reports** (`processReports_` in `Code.gs`, `FIX_PROMPT` in `Extract.gs`): up to 3 reports a run. Claude gets the original file, the recipe as it stands and the report, and returns only the fields it changed, with a one-line summary. The job keeps the changed fields and their old values under `fixes` in `recipes.json`, so undo can put them back and a fix survives the file being read again. The site applies an undo at once; the job does the same within the hour.
 - **Website** (`docs/`): plain HTML/JS, no build step. It keeps the password, the visitor's name and a random id for the device in the browser. The id goes with each note, so a note can only be deleted from the device that wrote it. The recipes, notes and photos are saved on the device, so the book opens straight away and works offline; the latest is fetched behind it. Mermaid draws the flowcharts.
 - **"Original file" links** on recipe pages open the file in Google Drive, so they only work for people the folder is shared with. The Google Cloud project used by the old Google sign-in is no longer needed and can be deleted.

@@ -252,6 +252,15 @@ async function processInboxLocked_() {
     changed = true;
   });
 
+  // Problems reported on the website: Claude fixes the recipe, and keep or undo is carried out.
+  var reports = { changed: false, left: 0 };
+  try {
+    reports = processReports_(index, claudeDown, function () { return Date.now() - started > TIME_BUDGET_MS - 90 * 1000; });
+    if (reports.changed) changed = true;
+  } catch (e) {
+    Logger.log('Could not deal with reported problems: ' + (e.message || e));
+  }
+
   try {
     if (markSiteAdded_(index, inbox)) changed = true;
   } catch (e) {
@@ -260,7 +269,7 @@ async function processInboxLocked_() {
   var unchecked = checkRecipes_(index);
   if (changed) saveIndex_(index);
   writeStatus_(index, plan.skipped, pending, held, unchecked);
-  scheduleContinuation_(outOfTime());
+  scheduleContinuation_(outOfTime() || reports.left > 0);
 }
 
 function recipesToCheck_(index) {
@@ -503,7 +512,11 @@ function exportAsPdf_(file) {
 }
 
 function extractRecipes_(file, pdf) {
-  var request = buildExtractionRequest_(claudeInputFor_(file, pdf), file.getName());
+  return parseExtractionResponse_(callClaude_(buildExtractionRequest_(claudeInputFor_(file, pdf), file.getName()))).recipes;
+}
+
+/** Sends one request to Claude and returns its reply; throws if the reply isn't JSON. */
+function callClaude_(request) {
   var resp = UrlFetchApp.fetch(CLAUDE_URL, {
     method: 'post',
     contentType: 'application/json',
@@ -517,7 +530,7 @@ function extractRecipes_(file, pdf) {
   } catch (e) {
     throw new Error('HTTP ' + resp.getResponseCode() + ' from the Claude API');
   }
-  return parseExtractionResponse_(body).recipes;
+  return body;
 }
 
 function decorateRecipe_(r, i, file) {
@@ -1030,6 +1043,174 @@ function pageTitle_(title, site, host) {
     title = m[1];
   }
   return title.replace(/\s+recipe$/i, '').trim();
+}
+
+// ---------- problems reported on the website, and added photos ----------
+
+var REPORTS_SHEET = 'Reports';
+var REPORTS_HEADERS = ['id', 'recipeId', 'timestamp', 'device', 'name', 'text', 'status', 'detail', 'decision', 'decidedBy', 'decidedAt', 'attempts'];
+var REPORTS_PER_RUN = 3;
+var PHOTOS_SHEET = 'Photos';
+var PHOTOS_HEADERS = ['id', 'recipeId', 'timestamp', 'device', 'name', 'fileId', 'removedBy', 'removedAt'];
+
+/** A tab of the notes spreadsheet that the website writes to; made on first use. */
+function siteSheet_(name, headers, ss) {
+  ss = ss || SpreadsheetApp.openById(requireProp_('SHEET_ID'));
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/** The rows of such a tab as objects named by its headers, each with .row, its row number. */
+function sheetRecords_(sheet, headers) {
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  return sheet.getRange(2, 1, last - 1, headers.length).getDisplayValues().map(function (v, i) {
+    var o = { row: i + 2 };
+    headers.forEach(function (h, j) { o[h] = v[j]; });
+    return o;
+  }).filter(function (o) { return o.id; });
+}
+
+/**
+ * Fixes recipes after problems reported on the website, and carries out the keep
+ * or undo people chose. A fixed recipe has an entry in index.fixes under its id:
+ *   fields   the new values of the fields that changed
+ *   before   their values as first read from the original, for undo
+ *   reports  [{id, by, at, text, summary}] the reports that led to it, oldest first
+ *   at       when it last changed
+ *   kept     {by, at} once someone has kept it, else null
+ *   sourceModified  the original file's date when it was fixed
+ * A fix outlasts the recipe being read again from the same file; if the file
+ * itself is edited, the fix gives way to the edit.
+ * Returns {changed, left}: left counts reports put off because time ran short.
+ */
+function processReports_(index, claudeDown, outOfTime) {
+  var sheet = siteSheet_(REPORTS_SHEET, REPORTS_HEADERS);
+  var rows = sheetRecords_(sheet, REPORTS_HEADERS);
+  index.fixes = index.fixes || {};
+  var byId = {};
+  index.recipes.forEach(function (r) { byId[r.id] = r; });
+  var changed = syncFixes_(index, byId, rows, sheet);
+  var done = 0, left = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    if (row.status !== 'waiting' || row.decision === 'dismiss' || claudeDown) continue;
+    if (done >= REPORTS_PER_RUN || outOfTime()) { left++; continue; }
+    var attempts = Number(row.attempts) || 0;
+    var result;
+    try {
+      var r = byId[row.recipeId];
+      result = r ? fixRecipe_(index, r, row) : { status: 'error', detail: 'That recipe is no longer in the book.' };
+    } catch (e) {
+      var message = String(e.message || e);
+      Logger.log('Could not fix ' + row.recipeId + ': ' + message);
+      if (isServiceError_(message)) { // try again next run
+        claudeDown = true;
+        continue;
+      }
+      attempts++;
+      result = attempts < MAX_ATTEMPTS ? { status: 'waiting', detail: message }
+        : { status: 'error', detail: 'Claude could not fix it (' + message + ').' };
+    }
+    row.status = result.status;
+    sheet.getRange(row.row, 7, 1, 2).setValues([asText_([result.status, result.detail])]);
+    sheet.getRange(row.row, 12).setValue(attempts);
+    if (result.status === 'changed') {
+      changed = true;
+      saveIndex_(index); // after each fix, so a timeout loses nothing
+    }
+    done++;
+  }
+  return { changed: changed, left: left };
+}
+
+/** Asks Claude to fix one recipe from its original file and the report. Returns the report's {status, detail}. */
+function fixRecipe_(index, r, row) {
+  var file = DriveApp.getFileById(r.sourceFileId);
+  var pdf = inputKind_(file) === 'pdf' ? pdfBlobFor_(file) : null;
+  var result = parseFixResponse_(callClaude_(buildFixRequest_(claudeInputFor_(file, pdf), file.getName(), r, row.text)), r);
+  if (!result.fields) return { status: 'no change', detail: result.summary || 'Claude found nothing to change.' };
+
+  // A recipe fixed before: this fix goes on top, and undo still goes back to the first reading.
+  var earlier = index.fixes[r.id];
+  var before = earlier ? earlier.before : {};
+  Object.keys(result.before).forEach(function (k) { if (!(k in before)) before[k] = result.before[k]; });
+  Object.keys(result.fields).forEach(function (k) { r[k] = result.fields[k]; });
+  var fields = {};
+  Object.keys(before).forEach(function (k) { fields[k] = r[k] === undefined ? null : r[k]; });
+  var entry = index.sources[r.sourceFileId];
+  index.fixes[r.id] = {
+    fields: fields, before: before,
+    reports: (earlier ? earlier.reports : []).concat([{ id: row.id, by: row.name, at: row.timestamp, text: row.text, summary: result.summary }]),
+    at: new Date().toISOString(), kept: null, sourceModified: entry ? entry.modified : null
+  };
+  recheck_(r);
+  return { status: 'changed', detail: result.summary };
+}
+
+/**
+ * Keeps index.fixes and the recipes in step: puts a fix back on a recipe read
+ * again from the same file, drops it if the file was edited or the recipe has
+ * gone, and carries out keep or undo. True if anything changed.
+ */
+function syncFixes_(index, byId, rows, sheet) {
+  var rowsById = {};
+  rows.forEach(function (x) { rowsById[x.id] = x; });
+  var changed = false;
+  Object.keys(index.fixes).forEach(function (recipeId) {
+    var fix = index.fixes[recipeId];
+    var r = byId[recipeId];
+    var mine = fix.reports.map(function (x) { return rowsById[x.id]; }).filter(Boolean);
+    var close = function (status, detail) {
+      mine.forEach(function (x) {
+        x.status = status;
+        sheet.getRange(x.row, 7, 1, 2).setValues([asText_([status, detail])]);
+      });
+      delete index.fixes[recipeId];
+      changed = true;
+    };
+    if (!r) return close('gone', 'The recipe is no longer in the book.');
+    var value = function (k) { return r[k] === undefined ? null : r[k]; };
+    var applied = Object.keys(fix.fields).every(function (k) { return JSON.stringify(value(k)) === JSON.stringify(fix.fields[k]); });
+    if (!applied) { // the recipe was read from its file again
+      var entry = index.sources[r.sourceFileId];
+      if (!entry || entry.modified !== fix.sourceModified) {
+        return close('replaced', 'The original file was changed after this fix, so the recipe was read from it again.');
+      }
+      Object.keys(fix.fields).forEach(function (k) {
+        fix.before[k] = value(k);
+        r[k] = fix.fields[k];
+      });
+      recheck_(r);
+      changed = true;
+    }
+    var decision = latestDecision_(mine, fix.at);
+    if (decision && decision.decision === 'undo') {
+      Object.keys(fix.before).forEach(function (k) { r[k] = fix.before[k]; });
+      recheck_(r);
+      close('undone', 'Undone by ' + (decision.decidedBy || 'someone') + '.');
+    } else if (decision && decision.decision === 'keep' && !fix.kept) {
+      fix.kept = { by: decision.decidedBy, at: decision.decidedAt };
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+/** The latest keep or undo on these reports made since the fix; older ones were about an earlier fix. */
+function latestDecision_(rows, since) {
+  return rows.filter(function (x) { return (x.decision === 'keep' || x.decision === 'undo') && x.decidedAt >= since; })
+    .sort(function (a, b) { return a.decidedAt < b.decidedAt ? 1 : -1; })[0] || null;
+}
+
+/** A changed recipe is checked again for unclear steps, since the old notes may point at the wrong steps. */
+function recheck_(r) {
+  ['checkVersion', 'unclear', 'certainty', 'checkAttempts', 'checkError'].forEach(function (k) { delete r[k]; });
 }
 
 /** Mirrors processing state into the Status tab so people can see what happened to their upload. */
